@@ -1,0 +1,17 @@
+"""URL routing for the sudoku application.
+
+Phase 1 exposes the placeholder page. Phase 7 (part 1) adds the JSON API
+endpoints for validating and solving puzzles. The frontend is not added yet.
+"""
+
+from django.urls import path
+
+from . import api_views, views
+
+app_name = "sudoku"
+
+urlpatterns = [
+    path("", views.placeholder, name="placeholder"),
+    path("api/validate/", api_views.api_validate, name="api_validate"),
+    path("api/solve/", api_views.api_solve, name="api_solve"),
+]

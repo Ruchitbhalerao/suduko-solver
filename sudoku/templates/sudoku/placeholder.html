@@ -1,0 +1,155 @@
+{# The home page. Historically named "placeholder.html" (Phase 1); since Phase 7
+   part 2 it hosts the interactive Sudoku interface. The filename and the view
+   name are kept so the existing Phase 1 route/tests continue to pass. #}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI-Based Sudoku Solver</title>
+    <meta name="description" content="Solve Sudoku puzzles with backtracking, MRV, and forward checking.">
+    <link rel="stylesheet" href="{% static 'sudoku/css/styles.css' %}">
+</head>
+<body>
+    <a class="skip-link" href="#sudoku-grid">Skip to the Sudoku grid</a>
+
+    <header class="page-header">
+        <h1>AI-Based Sudoku Solver</h1>
+        <p class="subtitle">
+            Using Constraint Satisfaction Problems and Heuristic Search
+        </p>
+    </header>
+
+    <main class="layout">
+        <section class="panel board-panel" aria-labelledby="board-heading">
+            <h2 id="board-heading" class="sr-only">Sudoku board</h2>
+
+            {# The 81 cells are created by app.js into this container. #}
+            <div
+                id="sudoku-grid"
+                class="sudoku-grid"
+                role="grid"
+                aria-label="Sudoku grid, 9 rows by 9 columns"
+                data-validate-url="{% url 'sudoku:api_validate' %}"
+                data-solve-url="{% url 'sudoku:api_solve' %}"
+            ></div>
+
+            <p class="grid-hint">
+                Type digits 1&ndash;9 into the cells and leave unknown cells
+                blank. Use the arrow keys to move between cells.
+            </p>
+
+            <div class="controls">
+                <div class="field">
+                    <label for="algorithm">Solver algorithm</label>
+                    <select id="algorithm" name="algorithm">
+                        <option value="backtracking">Backtracking (baseline)</option>
+                        <option value="mrv">MRV (Minimum Remaining Values)</option>
+                        <option value="mrv_forward_checking">MRV + Forward Checking</option>
+                    </select>
+                </div>
+
+                <div class="buttons" role="group" aria-label="Sudoku actions">
+                    <button id="solve-button" type="button" class="btn btn-primary">
+                        Solve
+                    </button>
+                    <button id="validate-button" type="button" class="btn">
+                        Validate
+                    </button>
+                    <button id="load-example-button" type="button" class="btn">
+                        Load example
+                    </button>
+                    <button id="clear-button" type="button" class="btn btn-ghost">
+                        Clear grid
+                    </button>
+                </div>
+            </div>
+
+            <div
+                id="status"
+                class="status"
+                role="status"
+                aria-live="polite"
+                hidden
+            ></div>
+        </section>
+
+        <aside class="panel results-panel" aria-labelledby="results-heading">
+            <h2 id="results-heading">Solver results</h2>
+
+            <p id="results-empty" class="results-empty">
+                No solve yet. Enter a puzzle, choose an algorithm, and press
+                <strong>Solve</strong>.
+            </p>
+
+            <dl id="results" class="results" hidden>
+                <dt>Status</dt>
+                <dd id="result-status">&mdash;</dd>
+                <dt>Algorithm</dt>
+                <dd id="result-algorithm">&mdash;</dd>
+                <dt>Recursive calls</dt>
+                <dd id="result-recursive-calls">&mdash;</dd>
+                <dt>Attempted assignments</dt>
+                <dd id="result-attempted-assignments">&mdash;</dd>
+                <dt>Backtracks</dt>
+                <dd id="result-backtracks">&mdash;</dd>
+                <dt>Execution time</dt>
+                <dd id="result-execution-time">&mdash;</dd>
+            </dl>
+
+            <p id="stale-note" class="stale-note" hidden>
+                The grid changed, so these results no longer describe the current
+                puzzle.
+            </p>
+        </aside>
+
+        <section class="panel info-panel" aria-labelledby="about-heading">
+            <h2 id="about-heading">How the algorithms work</h2>
+            <dl class="algorithms">
+                <dt>Backtracking</dt>
+                <dd>
+                    A depth-first search. It fills the first empty cell, tries the
+                    digits 1&ndash;9, and reverses a choice as soon as it breaks a
+                    Sudoku rule. Simple and reliable, but it can explore many dead
+                    ends.
+                </dd>
+
+                <dt>MRV (Minimum Remaining Values)</dt>
+                <dd>
+                    Same backtracking search, but it always fills the empty cell
+                    with the <em>fewest</em> legal candidates first. Doomed cells
+                    are noticed early, so far fewer dead ends are explored.
+                </dd>
+
+                <dt>MRV + Forward Checking</dt>
+                <dd>
+                    MRV plus a look-ahead step: after each tentative placement it
+                    checks that no other empty cell has been left with zero
+                    candidates. Branches that would wipe out a cell are rejected
+                    immediately.
+                </dd>
+            </dl>
+            <p class="info-note">
+                Fewer recursive calls do not always mean less wall-clock time:
+                the heuristics spend extra work choosing cells and checking
+                candidates. Compare the metrics rather than assuming one
+                algorithm is always fastest.
+            </p>
+        </section>
+    </main>
+
+    <footer class="page-footer">
+        Python {{ python_version }} &middot; Django {{ django_version }}
+    </footer>
+
+    <noscript>
+        <p class="noscript">
+            This Sudoku interface needs JavaScript for the grid and the solver
+            buttons. The solver is also available directly over the JSON API.
+        </p>
+    </noscript>
+
+    <script src="{% static 'sudoku/js/app.js' %}" defer></script>
+</body>
+</html>

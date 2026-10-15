@@ -1,0 +1,19 @@
+puzzle_id,category,algorithm,status,repetitions,median_time_ms,min_time_ms,max_time_ms,recursive_calls,attempted_assignments,backtracks,counters_consistent,solution_valid,error_type,error_message
+already_completed,already solved,backtracking,solved,3,0.002458997187204659,0.0024170003598555923,0.0028750000637955964,1,0,0,true,true,,
+already_completed,already solved,mrv,solved,3,0.002916996891144663,0.002749999111983925,0.0036659985198639333,1,0,0,true,true,,
+already_completed,already solved,mrv_forward_checking,solved,3,0.0024999972083605826,0.0023749962565489113,0.0025000044843181968,1,0,0,true,true,,
+easy_classic,easy (approx.),backtracking,solved,3,52.57595900184242,52.15962500369642,52.578666000044905,4209,4208,4157,true,true,,
+easy_classic,easy (approx.),mrv,solved,3,19.788290999713354,19.74625000002561,19.90983299765503,52,51,0,true,true,,
+easy_classic,easy (approx.),mrv_forward_checking,solved,3,38.46229099872289,38.392875001591165,38.65041599783581,52,51,0,true,true,,
+hard_inkala,hard (approx.),backtracking,solved,3,632.1487499953946,631.85374999739,632.6013330035494,49559,49558,49498,true,true,,
+hard_inkala,hard (approx.),mrv,solved,3,5521.068624999316,5509.14533300238,5522.017124996637,10102,10101,10041,true,true,,
+hard_inkala,hard (approx.),mrv_forward_checking,solved,3,10246.28208300419,10246.112499997253,10247.750875001657,9180,10101,10041,true,true,,
+invalid_duplicate_clues,invalid,backtracking,invalid_input,1,,,,,,,true,,SudokuValidationError,Duplicate clue value 5 in row 1.
+invalid_duplicate_clues,invalid,mrv,invalid_input,1,,,,,,,true,,SudokuValidationError,Duplicate clue value 5 in row 1.
+invalid_duplicate_clues,invalid,mrv_forward_checking,invalid_input,1,,,,,,,true,,SudokuValidationError,Duplicate clue value 5 in row 1.
+medium_classic,medium (approx.),backtracking,solved,3,200.49604200175963,200.48783299716888,200.68666700535687,15495,15494,15437,true,true,,
+medium_classic,medium (approx.),mrv,solved,3,82.77195900154766,82.37033300247276,82.98370800184784,130,129,72,true,true,,
+medium_classic,medium (approx.),mrv_forward_checking,solved,3,151.33987499575596,151.24104199639987,151.77637500164565,121,129,72,true,true,,
+unsolvable_no_duplicates,unsolvable,backtracking,unsolvable,3,0.009292001777794212,0.00916700082598254,0.010457995813339949,1,0,0,true,,,
+unsolvable_no_duplicates,unsolvable,mrv,unsolvable,3,1.5635829986422323,1.5616250020684674,1.5732079991721548,1,0,0,true,,,
+unsolvable_no_duplicates,unsolvable,mrv_forward_checking,unsolvable,3,1.557832998514641,1.553625006636139,1.5606250017299317,1,0,0,true,,,
