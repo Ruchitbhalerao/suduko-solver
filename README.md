@@ -767,3 +767,27 @@ failure. It never installs or changes anything.
 ## License
 
 For academic use as part of coursework.
+
+## Image Upload & Automatic Grid Recognition
+
+The interface now supports importing Sudoku puzzles directly from images.
+
+### Input methods
+- **File picker**: Click "Choose image" and select a PNG, JPG, JPEG, or WEBP file (max 8 MB).
+- **Drag and drop**: Drop a supported image onto the upload area; the page will not navigate away.
+- **Clipboard paste**: Copy an image (screenshot) and paste with `Ctrl+V` (Windows/Linux) or `Cmd+V` (macOS). If no image is on the clipboard, normal text pasting is unaffected.
+
+### How it works
+1. Select or paste an image — a preview appears and "Extract Sudoku" becomes enabled.
+2. Click **Extract Sudoku**. The app sends the image to `POST /api/extract-sudoku/`.
+3. The recognized 9×9 grid populates the board; original/imported clues are marked distinctively.
+4. Review and correct any cells if needed.
+5. Validate or Solve as usual. Editing the grid marks previous results as stale.
+
+### Dependencies
+Image recognition uses `opencv-python-headless`, `numpy`, and `Pillow`. These are already installed in `.venv/` and listed in `requirements.txt`.
+
+### Known limitations
+- Works best for clear printed Sudoku puzzles and screenshots. Handwritten puzzles are not guaranteed.
+- Very poor lighting, heavy shadows, low resolution, or severely angled photos may fail to detect the grid.
+- If confidence is low or clues conflict, warnings are shown and no automatic changes are made; manual correction is required.

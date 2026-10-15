@@ -308,3 +308,109 @@ def api_solve(request: HttpRequest) -> JsonResponse:
         },
         status=HTTP_200_OK,
     )
+
+
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+
+
+def _to_matrix(grid_obj):
+    # already list
+    if isinstance(grid_obj, list) and len(grid_obj) == 9:
+        matrix = []
+        for row in grid_obj:
+            matrix.append([int(x) for x in row[:9]])
+        return matrix
+    raise SudokuExtractionError("Invalid grid returned") if False else None  # type: ignore
+
+
+def _read_image_from_request(request):
+    from sudoku.image_processing import extract_sudoku_from_image, SudokuExtractionError
+
+    if request.method != "POST":
+        raise SudokuExtractionError("Method not allowed", code="method_not_allowed", status=405)
+
+    image_file = None
+    if request.FILES:
+        # common keys
+        for key in ("image", "file", "upload", "photo"):
+            if key in request.FILES:
+                image_file = request.FILES[key]
+                break
+        if image_file is None:
+            # take first file
+            image_file = next(iter(request.FILES.values()))
+    # clipboard? maybe data:image/ base64? but we expect multipart; if not present try
+    if image_file is None:
+        raise SudokuExtractionError(
+            "No image provided. Upload an image or paste a screenshot.",
+            code="missing_image",
+            status=400,
+        )
+
+    if image_file.size is not None and image_file.size > MAX_IMAGE_BYTES:
+        raise SudokuExtractionError(
+            "The image is too large (maximum 8 MB).",
+            code="image_too_large",
+            status=413,
+        )
+
+    content_type = (getattr(image_file, "content_type", "") or "").lower()
+    if content_type:
+        if not (
+            content_type.startswith("image/png")
+            or content_type.startswith("image/jpeg")
+            or content_type.startswith("image/jpg")
+            or content_type.startswith("image/webp")
+        ):
+            raise SudokuExtractionError(
+                "Unsupported image format. Use PNG, JPG, JPEG, or WEBP.",
+                code="unsupported_media_type",
+                status=415,
+            )
+    else:
+        # try by name
+        name = (getattr(image_file, "name", "") or "").lower()
+        if not any(name.endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".webp")):
+            raise SudokuExtractionError(
+                "Unsupported image format. Use PNG, JPG, JPEG, or WEBP.",
+                code="unsupported_media_type",
+                status=415,
+            )
+
+    try:
+        data = image_file.read()
+    except Exception:
+        raise SudokuExtractionError("Failed to read image", code="invalid_image", status=422)
+
+    return extract_sudoku_from_image(data)
+
+
+@csrf_exempt
+def api_extract_sudoku(request):
+    """Extract Sudoku grid from an uploaded image.
+
+    POST multipart/form-data with an image field.
+    """
+    from sudoku.image_processing import SudokuExtractionError
+
+    try:
+        result = _read_image_from_request(request)
+    except SudokuExtractionError as exc:
+        return JsonResponse(
+            {
+                "status": exc.code,
+                "error": {"code": exc.code, "message": exc.message},
+            },
+            status=exc.status,
+        )
+    except Exception as exc:
+        return JsonResponse(
+            {
+                "status": "internal_error",
+                "error": {"code": "internal_error", "message": str(exc)},
+            },
+            status=500,
+        )
+
+    # ensure serializable
+    return JsonResponse(result, status=200)

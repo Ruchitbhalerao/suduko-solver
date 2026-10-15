@@ -33,6 +33,7 @@
                 aria-label="Sudoku grid, 9 rows by 9 columns"
                 data-validate-url="{% url 'sudoku:api_validate' %}"
                 data-solve-url="{% url 'sudoku:api_solve' %}"
+                data-extract-url="{% url 'sudoku:api_extract_sudoku' %}"
             ></div>
 
             <p class="grid-hint">
@@ -65,6 +66,54 @@
                     </button>
                 </div>
             </div>
+
+            <section class="panel upload-panel" aria-labelledby="upload-heading">
+                <h3 id="upload-heading">Import Sudoku from an image</h3>
+                <p class="upload-hint">
+                    Upload a PNG, JPG, JPEG, or WEBP image of a printed Sudoku board.
+                    You can also drag and drop it or paste a screenshot with
+                    <kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd>.
+                </p>
+
+                <div
+                    id="upload-dropzone"
+                    class="upload-dropzone"
+                    role="button"
+                    tabindex="0"
+                    aria-describedby="upload-instructions"
+                >
+                    <input
+                        id="image-input"
+                        type="file"
+                        accept="image/png, image/jpeg, image/jpg, image/webp"
+                        hidden
+                    />
+                    <div class="upload-content">
+                        <p id="upload-instructions">
+                            Drop an image here, click to choose a file, or paste from your
+                            clipboard.
+                        </p>
+                        <div class="upload-buttons">
+                            <button id="choose-image-button" type="button" class="btn">
+                                Choose image
+                            </button>
+                            <button id="extract-button" type="button" class="btn btn-primary" disabled>
+                                Extract Sudoku
+                            </button>
+                            <button id="reset-image-button" type="button" class="btn btn-ghost" disabled>
+                                Remove image
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="image-preview-container" class="image-preview" hidden>
+                    <img id="image-preview" alt="Selected Sudoku image preview" />
+                </div>
+
+                <p id="upload-status" class="upload-status" aria-live="polite" hidden></p>
+                <p id="upload-warnings" class="upload-warnings" hidden></p>
+            </section>
 
             <div
                 id="status"

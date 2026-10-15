@@ -15,7 +15,7 @@
     --solved-ink: #0f7a4d;
     --clue-bg: #e9eef7;
     --solved-bg: #e7f6ee;
-    --focus: #ffb020;
+    --focus: #b26b00;
     --ok-bg: #e7f6ee;
     --ok-line: #9fd9b8;
     --ok-ink: #135c37;
@@ -201,7 +201,7 @@ body {
 
 .cell:focus-visible {
     outline: 3px solid var(--focus);
-    outline-offset: -3px;
+    outline-offset: 2px;
     z-index: 2;
 }
 
@@ -442,6 +442,7 @@ select:focus-visible,
         --solved-ink: #7fe0ab;
         --clue-bg: #243247;
         --solved-bg: #163a2a;
+        --focus: #ffc36b;
         --ok-bg: #12301f;
         --ok-line: #1f5636;
         --ok-ink: #7fe0ab;
@@ -494,3 +495,88 @@ select:focus-visible,
         transition: none;
     }
 }
+
+/* Image upload */
+.upload-panel {
+    margin-top: 1.25rem;
+    background: var(--panel);
+    padding: 1.25rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--line);
+}
+
+.upload-hint {
+    color: var(--muted);
+    margin-bottom: 1rem;
+}
+
+.upload-dropzone {
+    border: 2px dashed var(--line-strong);
+    border-radius: 1rem;
+    padding: clamp(1rem, 3vw, 1.5rem);
+    background: rgba(255,255,255,0.5);
+    transition: border-color 0.15s ease, background 0.15s ease;
+    cursor: pointer;
+    outline: none;
+}
+
+.upload-dropzone.is-dragover {
+    border-color: var(--accent);
+    background: var(--info-bg);
+}
+
+.upload-dropzone:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+}
+
+.upload-content {
+    text-align: center;
+    display: grid;
+    gap: 1rem;
+}
+
+.upload-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+}
+
+.image-preview {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-height: 320px;
+    overflow: hidden;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 0.75rem;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+}
+
+.upload-status {
+    margin-top: 1rem;
+    font-weight: 600;
+}
+
+.upload-warnings {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-line);
+    color: var(--warn-ink);
+    border-radius: 0.75rem;
+}
+
+.upload-status.is-success { color: var(--ok-ink); }
+.upload-status.is-error { color: var(--warn-ink); }
+.upload-status.is-info { color: var(--info-ink); }
+.upload-status.is-warning { color: var(--warn-ink); }

@@ -1,6 +1,6 @@
 # Sudoku solver benchmark report
 
-- **Generated:** 2026-10-15 16:55:42 UTC
+- **Generated:** 2026-10-15 18:06:04 UTC
 - **Command:** `python -m sudoku.services.benchmark`
 - **Repetitions per puzzle/algorithm:** 3
 - **Algorithms:** `backtracking`, `mrv`, `mrv_forward_checking`
@@ -46,24 +46,24 @@ Difficulty labels are **approximate**; see "Limitations".
 
 | Identifier | Algorithm | Status | Reps | Median ms | Min ms | Max ms | Calls | Assignments | Backtracks | Solution valid | Error |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `already_completed` | `backtracking` | solved | 3 | 0.0025 | 0.0024 | 0.0029 | 1 | 0 | 0 | true |  |
-| `already_completed` | `mrv` | solved | 3 | 0.0029 | 0.0027 | 0.0037 | 1 | 0 | 0 | true |  |
-| `already_completed` | `mrv_forward_checking` | solved | 3 | 0.0025 | 0.0024 | 0.0025 | 1 | 0 | 0 | true |  |
-| `easy_classic` | `backtracking` | solved | 3 | 52.6 | 52.2 | 52.6 | 4209 | 4208 | 4157 | true |  |
-| `easy_classic` | `mrv` | solved | 3 | 19.8 | 19.7 | 19.9 | 52 | 51 | 0 | true |  |
-| `easy_classic` | `mrv_forward_checking` | solved | 3 | 38.5 | 38.4 | 38.7 | 52 | 51 | 0 | true |  |
-| `hard_inkala` | `backtracking` | solved | 3 | 632 | 632 | 633 | 49559 | 49558 | 49498 | true |  |
-| `hard_inkala` | `mrv` | solved | 3 | 5521 | 5509 | 5522 | 10102 | 10101 | 10041 | true |  |
-| `hard_inkala` | `mrv_forward_checking` | solved | 3 | 10246 | 10246 | 10248 | 9180 | 10101 | 10041 | true |  |
+| `already_completed` | `backtracking` | solved | 3 | 0.0024 | 0.0024 | 0.003 | 1 | 0 | 0 | true |  |
+| `already_completed` | `mrv` | solved | 3 | 0.0025 | 0.0024 | 0.0026 | 1 | 0 | 0 | true |  |
+| `already_completed` | `mrv_forward_checking` | solved | 3 | 0.0024 | 0.0023 | 0.0025 | 1 | 0 | 0 | true |  |
+| `easy_classic` | `backtracking` | solved | 3 | 53.3 | 53.0 | 53.4 | 4209 | 4208 | 4157 | true |  |
+| `easy_classic` | `mrv` | solved | 3 | 19.9 | 19.9 | 20.2 | 52 | 51 | 0 | true |  |
+| `easy_classic` | `mrv_forward_checking` | solved | 3 | 38.8 | 38.8 | 39.0 | 52 | 51 | 0 | true |  |
+| `hard_inkala` | `backtracking` | solved | 3 | 642 | 642 | 643 | 49559 | 49558 | 49498 | true |  |
+| `hard_inkala` | `mrv` | solved | 3 | 5567 | 5566 | 5628 | 10102 | 10101 | 10041 | true |  |
+| `hard_inkala` | `mrv_forward_checking` | solved | 3 | 10360 | 10359 | 10363 | 9180 | 10101 | 10041 | true |  |
 | `invalid_duplicate_clues` | `backtracking` | invalid_input | 1 | -- | -- | -- | -- | -- | -- | -- | SudokuValidationError |
 | `invalid_duplicate_clues` | `mrv` | invalid_input | 1 | -- | -- | -- | -- | -- | -- | -- | SudokuValidationError |
 | `invalid_duplicate_clues` | `mrv_forward_checking` | invalid_input | 1 | -- | -- | -- | -- | -- | -- | -- | SudokuValidationError |
-| `medium_classic` | `backtracking` | solved | 3 | 200 | 200 | 201 | 15495 | 15494 | 15437 | true |  |
-| `medium_classic` | `mrv` | solved | 3 | 82.8 | 82.4 | 83.0 | 130 | 129 | 72 | true |  |
-| `medium_classic` | `mrv_forward_checking` | solved | 3 | 151 | 151 | 152 | 121 | 129 | 72 | true |  |
-| `unsolvable_no_duplicates` | `backtracking` | unsolvable | 3 | 0.0093 | 0.0092 | 0.0105 | 1 | 0 | 0 | -- |  |
-| `unsolvable_no_duplicates` | `mrv` | unsolvable | 3 | 1.56 | 1.56 | 1.57 | 1 | 0 | 0 | -- |  |
-| `unsolvable_no_duplicates` | `mrv_forward_checking` | unsolvable | 3 | 1.56 | 1.55 | 1.56 | 1 | 0 | 0 | -- |  |
+| `medium_classic` | `backtracking` | solved | 3 | 203 | 203 | 203 | 15495 | 15494 | 15437 | true |  |
+| `medium_classic` | `mrv` | solved | 3 | 83.7 | 83.6 | 84.1 | 130 | 129 | 72 | true |  |
+| `medium_classic` | `mrv_forward_checking` | solved | 3 | 153 | 153 | 153 | 121 | 129 | 72 | true |  |
+| `unsolvable_no_duplicates` | `backtracking` | unsolvable | 3 | 0.0093 | 0.0092 | 0.01 | 1 | 0 | 0 | -- |  |
+| `unsolvable_no_duplicates` | `mrv` | unsolvable | 3 | 1.61 | 1.61 | 1.81 | 1 | 0 | 0 | -- |  |
+| `unsolvable_no_duplicates` | `mrv_forward_checking` | unsolvable | 3 | 1.56 | 1.55 | 1.57 | 1 | 0 | 0 | -- |  |
 
 ## Comparison: puzzles solved by every algorithm
 
@@ -71,41 +71,43 @@ Difficulty labels are **approximate**; see "Limitations".
 
 | Algorithm | Median ms | Min ms | Max ms | Recursive calls | Attempted assignments | Backtracks |
 |---|---|---|---|---|---|---|
-| `backtracking` | 0.0025 | 0.0024 | 0.0029 | 1 | 0 | 0 |
-| `mrv` | 0.0029 | 0.0027 | 0.0037 | 1 | 0 | 0 |
-| `mrv_forward_checking` | 0.0025 | 0.0024 | 0.0025 | 1 | 0 | 0 |
+| `backtracking` | 0.0024 | 0.0024 | 0.003 | 1 | 0 | 0 |
+| `mrv` | 0.0025 | 0.0024 | 0.0026 | 1 | 0 | 0 |
+| `mrv_forward_checking` | 0.0024 | 0.0023 | 0.0025 | 1 | 0 | 0 |
 
 ### `easy_classic`
 
 | Algorithm | Median ms | Min ms | Max ms | Recursive calls | Attempted assignments | Backtracks |
 |---|---|---|---|---|---|---|
-| `backtracking` | 52.6 | 52.2 | 52.6 | 4,209 | 4,208 | 4,157 |
-| `mrv` | 19.8 | 19.7 | 19.9 | 52 | 51 | 0 |
-| `mrv_forward_checking` | 38.5 | 38.4 | 38.7 | 52 | 51 | 0 |
+| `backtracking` | 53.3 | 53.0 | 53.4 | 4,209 | 4,208 | 4,157 |
+| `mrv` | 19.9 | 19.9 | 20.2 | 52 | 51 | 0 |
+| `mrv_forward_checking` | 38.8 | 38.8 | 39.0 | 52 | 51 | 0 |
 
 ### `hard_inkala`
 
 | Algorithm | Median ms | Min ms | Max ms | Recursive calls | Attempted assignments | Backtracks |
 |---|---|---|---|---|---|---|
-| `backtracking` | 632 | 632 | 633 | 49,559 | 49,558 | 49,498 |
-| `mrv` | 5521 | 5509 | 5522 | 10,102 | 10,101 | 10,041 |
-| `mrv_forward_checking` | 10246 | 10246 | 10248 | 9,180 | 10,101 | 10,041 |
+| `backtracking` | 642 | 642 | 643 | 49,559 | 49,558 | 49,498 |
+| `mrv` | 5567 | 5566 | 5628 | 10,102 | 10,101 | 10,041 |
+| `mrv_forward_checking` | 10360 | 10359 | 10363 | 9,180 | 10,101 | 10,041 |
 
 ### `medium_classic`
 
 | Algorithm | Median ms | Min ms | Max ms | Recursive calls | Attempted assignments | Backtracks |
 |---|---|---|---|---|---|---|
-| `backtracking` | 200 | 200 | 201 | 15,495 | 15,494 | 15,437 |
-| `mrv` | 82.8 | 82.4 | 83.0 | 130 | 129 | 72 |
-| `mrv_forward_checking` | 151 | 151 | 152 | 121 | 129 | 72 |
+| `backtracking` | 203 | 203 | 203 | 15,495 | 15,494 | 15,437 |
+| `mrv` | 83.7 | 83.6 | 84.1 | 130 | 129 | 72 |
+| `mrv_forward_checking` | 153 | 153 | 153 | 121 | 129 | 72 |
 
 ## Observations
 
-Lowest median wall-clock time on 4 commonly-solved puzzle(s): `backtracking` 2, `mrv` 2, `mrv_forward_checking` 0 (count = number of puzzles won).
+Lowest median wall-clock time on 4 commonly-solved puzzle(s): `backtracking` 1, `mrv` 2, `mrv_forward_checking` 1 (count = number of puzzles won).
 Fewest recursive calls on the same puzzles: `backtracking` 1, `mrv` 1, `mrv_forward_checking` 2.
 Fewer search steps did **not** always mean less wall-clock time (the heuristics pay per-step overhead for scanning cells and candidates):
-- `hard_inkala`: fewest recursive calls came from `mrv_forward_checking` (9,180), yet `backtracking` was fastest in median wall-clock time (632 ms vs 10246 ms).
-- `medium_classic`: fewest recursive calls came from `mrv_forward_checking` (121), yet `mrv` was fastest in median wall-clock time (82.8 ms vs 151 ms).
+- `already_completed`: fewest recursive calls came from `backtracking` (1), yet `mrv_forward_checking` was fastest in median wall-clock time (0.0024 ms vs 0.0024 ms).
+- `hard_inkala`: fewest recursive calls came from `mrv_forward_checking` (9,180), yet `backtracking` was fastest in median wall-clock time (642 ms vs 10360 ms).
+- `medium_classic`: fewest recursive calls came from `mrv_forward_checking` (121), yet `mrv` was fastest in median wall-clock time (83.7 ms vs 153 ms).
+- Note: divergences where both medians are below 0.1 ms fall within timer resolution and system noise, and should not be over-interpreted.
 
 ## What the charts show
 

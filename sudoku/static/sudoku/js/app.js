@@ -589,6 +589,195 @@
         loadExampleButton.addEventListener("click", loadExample);
         clearButton.addEventListener("click", clearGrid);
 
+
+        /* ---------- image upload ---------- */
+        var extractUrl = gridEl.dataset.extractUrl;
+        var dropzone = document.getElementById("upload-dropzone");
+        var imageInput = document.getElementById("image-input");
+        var chooseImageButton = document.getElementById("choose-image-button");
+        var extractButton = document.getElementById("extract-button");
+        var resetImageButton = document.getElementById("reset-image-button");
+        var imagePreviewContainer = document.getElementById("image-preview-container");
+        var imagePreview = document.getElementById("image-preview");
+        var uploadStatus = document.getElementById("upload-status");
+        var uploadWarnings = document.getElementById("upload-warnings");
+
+        var selectedImageFile = null;
+        var extracting = false;
+        var extractToken = 0;
+        var activeExtractToken = 0;
+        var extractController = null;
+
+        function setUploadStatus(message, kind) {
+            if (!uploadStatus) return;
+            if (!message) {
+                uploadStatus.hidden = true;
+                uploadStatus.textContent = "";
+                uploadStatus.className = "upload-status";
+                return;
+            }
+            uploadStatus.hidden = false;
+            uploadStatus.textContent = message;
+            uploadStatus.className = "upload-status" + (kind ? " is-" + kind : "");
+        }
+
+        function setUploadWarnings(messages) {
+            if (!uploadWarnings) return;
+            if (!messages || messages.length === 0) {
+                uploadWarnings.hidden = true;
+                uploadWarnings.textContent = "";
+                return;
+            }
+            uploadWarnings.hidden = false;
+            uploadWarnings.textContent = messages.join(" ");
+        }
+
+        function abortExtract() {
+            if (extractController) {
+                extractController.abort();
+                extractController = null;
+            }
+        }
+
+        function clearSelectedImage() {
+            selectedImageFile = null;
+            if (imageInput) imageInput.value = "";
+            if (imagePreviewContainer) imagePreviewContainer.hidden = true;
+            if (imagePreview) imagePreview.src = "";
+            if (extractButton) extractButton.disabled = true;
+            if (resetImageButton) resetImageButton.disabled = true;
+            setUploadStatus("", null);
+            setUploadWarnings([]);
+        }
+
+        function updateExtractControls() {
+            if (extractButton) {
+                extractButton.disabled = !selectedImageFile || extracting;
+                extractButton.textContent = extracting ? "Extracting…" : "Extract Sudoku";
+            }
+            if (resetImageButton) resetImageButton.disabled = !selectedImageFile || extracting;
+            if (chooseImageButton) chooseImageButton.disabled = extracting;
+        }
+
+        function loadImageFile(file) {
+            if (!file) return;
+            var t = (file.type || "").toLowerCase();
+            var name = (file.name || "").toLowerCase();
+            var ok = t.startsWith("image/png") || t.startsWith("image/jpeg") || t.startsWith("image/jpg") || t.startsWith("image/webp") ||
+                     name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".webp");
+            if (!ok) {
+                setUploadStatus("Unsupported image format. Use PNG, JPG, JPEG, or WEBP.", "error");
+                return;
+            }
+            if (file.size > 8*1024*1024) {
+                setUploadStatus("The image is too large (maximum 8 MB).", "error");
+                return;
+            }
+            selectedImageFile = file;
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                if (imagePreview) imagePreview.src = e.target.result;
+                if (imagePreviewContainer) imagePreviewContainer.hidden = false;
+            };
+            reader.readAsDataURL(file);
+            setUploadStatus("Image selected. Click 'Extract Sudoku'.", "info");
+            setUploadWarnings([]);
+            updateExtractControls();
+        }
+
+        if (dropzone && imageInput && chooseImageButton) {
+            chooseImageButton.addEventListener("click", function () { imageInput.click(); });
+            imageInput.addEventListener("change", function (e) {
+                if (e.target.files && e.target.files[0]) loadImageFile(e.target.files[0]);
+            });
+            dropzone.addEventListener("click", function (e) {
+                if (e.target.closest(".btn")) return;
+                imageInput.click();
+            });
+            dropzone.addEventListener("keydown", function (e) {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); imageInput.click(); }
+            });
+            dropzone.addEventListener("dragover", function (e) {
+                e.preventDefault(); dropzone.classList.add("is-dragover");
+            });
+            dropzone.addEventListener("dragleave", function (e) {
+                e.preventDefault(); dropzone.classList.remove("is-dragover");
+            });
+            dropzone.addEventListener("drop", function (e) {
+                e.preventDefault(); dropzone.classList.remove("is-dragover");
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) loadImageFile(e.dataTransfer.files[0]);
+            });
+        }
+
+        if (resetImageButton) {
+            resetImageButton.addEventListener("click", function () {
+                abortExtract(); extracting = false; activeExtractToken = ++extractToken; updateExtractControls();
+                clearSelectedImage();
+            });
+        }
+
+        document.addEventListener("paste", function (e) {
+            var items = e.clipboardData && e.clipboardData.items;
+            if (!items || items.length === 0) return;
+            for (var i=0; i<items.length; i++) {
+                if (items[i].type.indexOf("image") !== -1) {
+                    var file = items[i].getAsFile();
+                    if (file) {
+                        e.preventDefault();
+                        loadImageFile(file);
+                    }
+                    break;
+                }
+            }
+        });
+
+        function applyExtractedGrid(grid) {
+            abortRequest("solve"); abortRequest("validate");
+            state.solving=false; state.validating=false; updateControls();
+            state.grid = cloneGrid(grid);
+            state.clueMask = grid.map(function (r){ return r.map(function(v){ return v!==0; }); });
+            state.solvedMask = falses();
+            clearResult();
+            renderAll();
+            markStale();
+        }
+
+        function extractImage() {
+            if (!selectedImageFile || extracting) return;
+            abortExtract();
+            var token = extractToken + 1; extractToken = token; activeExtractToken = token;
+            var controller = new AbortController(); extractController = controller;
+            extracting = true; updateExtractControls();
+            setUploadStatus("Extracting Sudoku from image…", "info"); setUploadWarnings([]);
+
+            var formData = new FormData();
+            formData.append("image", selectedImageFile);
+            fetch(extractUrl, { method: "POST", body: formData, signal: controller.signal })
+                .then(function (r) { return r.json().then(function(d){ return {response:r, data:d}; }); })
+                .then(function (res) {
+                    if (token !== activeExtractToken) return;
+                    var d = res.data || {};
+                    if (res.response.ok && d.status === "ok" && Array.isArray(d.grid)) {
+                        applyExtractedGrid(d.grid);
+                        setUploadStatus(d.message || "Sudoku grid extracted successfully.", "success");
+                        setUploadWarnings(Array.isArray(d.warnings) ? d.warnings : []);
+                        return;
+                    }
+                    var msg = (d.error && d.error.message) || d.message || "Failed to extract Sudoku from image.";
+                    setUploadStatus(msg, "error");
+                    setUploadWarnings(Array.isArray(d.warnings) ? d.warnings : []);
+                })
+                .catch(function (err) {
+                    if (!isAbort(err)) setUploadStatus(NETWORK_MESSAGE, "error");
+                })
+                .then(function () {
+                    if (token === activeExtractToken) {
+                        extractController = null; extracting = false; updateExtractControls();
+                    }
+                });
+        }
+        if (extractButton) extractButton.addEventListener("click", extractImage);
+        clearSelectedImage(); updateExtractControls();
         buildGrid();
         renderAll();
         updateControls();
