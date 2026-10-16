@@ -223,6 +223,13 @@ body {
     font-weight: 700;
 }
 
+/* Cells whose clue breaks a Sudoku rule (e.g. a digit recognised twice). */
+.cell.conflict {
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+    box-shadow: inset 0 0 0 2px var(--warn-line);
+}
+
 .cell[readonly] {
     cursor: default;
 }

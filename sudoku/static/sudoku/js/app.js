@@ -13,19 +13,46 @@
 (function () {
     "use strict";
 
-    /* A deterministic, valid, incomplete classic puzzle. The same grid is used
-       by the project's tests and the benchmark dataset ("easy_classic"), and the
-       validation endpoint accepts it. */
-    var EXAMPLE_PUZZLE = [
-        [5, 3, 0, 0, 7, 0, 0, 0, 0],
-        [6, 0, 0, 1, 9, 5, 0, 0, 0],
-        [0, 9, 8, 0, 0, 0, 0, 6, 0],
-        [8, 0, 0, 0, 6, 0, 0, 0, 3],
-        [4, 0, 0, 8, 0, 3, 0, 0, 1],
-        [7, 0, 0, 0, 2, 0, 0, 0, 6],
-        [0, 6, 0, 0, 0, 0, 2, 8, 0],
-        [0, 0, 0, 4, 1, 9, 0, 0, 5],
-        [0, 0, 0, 0, 8, 0, 0, 7, 9]
+    /* A selection of valid, incomplete puzzles. One is chosen at random when
+       clicking "Load example". Includes easy_classic, medium_classic, and
+       hard_inkala from the benchmark dataset. */
+    var EXAMPLE_PUZZLES = [
+        // easy_classic
+        [
+            [5, 3, 0, 0, 7, 0, 0, 0, 0],
+            [6, 0, 0, 1, 9, 5, 0, 0, 0],
+            [0, 9, 8, 0, 0, 0, 0, 6, 0],
+            [8, 0, 0, 0, 6, 0, 0, 0, 3],
+            [4, 0, 0, 8, 0, 3, 0, 0, 1],
+            [7, 0, 0, 0, 2, 0, 0, 0, 6],
+            [0, 6, 0, 0, 0, 0, 2, 8, 0],
+            [0, 0, 0, 4, 1, 9, 0, 0, 5],
+            [0, 0, 0, 0, 8, 0, 0, 7, 9]
+        ],
+        // medium_classic
+        [
+            [0, 0, 0, 0, 0, 0, 0, 9, 0],
+            [5, 9, 0, 2, 0, 0, 0, 0, 3],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 9, 0, 0, 5, 3, 0],
+            [0, 0, 0, 0, 7, 0, 0, 0, 2],
+            [0, 0, 2, 0, 0, 8, 0, 4, 0],
+            [7, 3, 0, 0, 0, 0, 4, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 4, 0, 0, 0, 0, 0, 6, 0]
+        ],
+        // hard_inkala
+        [
+            [8, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 3, 6, 0, 0, 0, 0, 0],
+            [0, 7, 0, 0, 9, 0, 2, 0, 0],
+            [0, 5, 0, 0, 0, 7, 0, 0, 0],
+            [0, 0, 0, 0, 4, 5, 7, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 3, 0],
+            [0, 0, 1, 0, 0, 0, 0, 6, 8],
+            [0, 0, 8, 5, 0, 0, 0, 1, 0],
+            [0, 9, 0, 0, 0, 0, 4, 0, 0]
+        ]
     ];
 
     var ALGORITHM_LABELS = {
@@ -60,6 +87,56 @@
             }
         }
         return out;
+    }
+
+    /* Mark every non-empty cell that repeats a value in its row, column, or
+       3x3 box. These are the clues that make a grid invalid (HTTP 422), so the
+       UI highlights them and refuses to send the grid until they are fixed. */
+    function conflictMask(grid) {
+        var mask = zeros().map(function (row) {
+            return row.map(function () {
+                return false;
+            });
+        });
+        for (var r = 0; r < 9; r += 1) {
+            for (var c = 0; c < 9; c += 1) {
+                var value = grid[r][c];
+                if (value === 0) {
+                    continue;
+                }
+                var duplicate = false;
+                for (var k = 0; k < 9; k += 1) {
+                    if (k !== c && grid[r][k] === value) {
+                        duplicate = true;
+                    }
+                    if (k !== r && grid[k][c] === value) {
+                        duplicate = true;
+                    }
+                }
+                var boxRow = Math.floor(r / 3) * 3;
+                var boxCol = Math.floor(c / 3) * 3;
+                for (var br = boxRow; br < boxRow + 3; br += 1) {
+                    for (var bc = boxCol; bc < boxCol + 3; bc += 1) {
+                        if ((br !== r || bc !== c) && grid[br][bc] === value) {
+                            duplicate = true;
+                        }
+                    }
+                }
+                mask[r][c] = duplicate;
+            }
+        }
+        return mask;
+    }
+
+    function hasConflicts(mask) {
+        for (var r = 0; r < 9; r += 1) {
+            for (var c = 0; c < 9; c += 1) {
+                if (mask[r][c]) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     function isAbort(error) {
@@ -108,6 +185,7 @@
             grid: zeros(),
             clueMask: falses(),
             solvedMask: falses(),
+            conflictCells: falses(),
             cells: [],
             solving: false,
             validating: false,
@@ -179,9 +257,11 @@
             input.classList.toggle("solved", isSolved);
             input.classList.toggle("entered", isEntered);
             input.classList.toggle("empty", value === 0);
+            input.classList.toggle("conflict", state.conflictCells[r][c]);
         }
 
         function renderAll() {
+            state.conflictCells = conflictMask(state.grid);
             for (var r = 0; r < 9; r += 1) {
                 for (var c = 0; c < 9; c += 1) {
                     applyCellState(r, c);
@@ -265,7 +345,22 @@
             state.solvedMask[r][c] = false;
 
             applyCellState(r, c);
+            refreshConflicts();
             onGridEdited();
+        }
+
+        /* Recompute which cells clash and update only the highlight class, so
+           editing keeps the caret and the other cells' values untouched. */
+        function refreshConflicts() {
+            state.conflictCells = conflictMask(state.grid);
+            for (var r = 0; r < 9; r += 1) {
+                for (var c = 0; c < 9; c += 1) {
+                    state.cells[r][c].classList.toggle(
+                        "conflict",
+                        state.conflictCells[r][c]
+                    );
+                }
+            }
         }
 
         function onCellKeyDown(event) {
@@ -362,8 +457,10 @@
             state.validating = false;
             updateControls();
 
-            state.grid = cloneGrid(EXAMPLE_PUZZLE);
-            state.clueMask = EXAMPLE_PUZZLE.map(function (row) {
+            var randomIndex = Math.floor(Math.random() * EXAMPLE_PUZZLES.length);
+            var selectedPuzzle = EXAMPLE_PUZZLES[randomIndex];
+            state.grid = cloneGrid(selectedPuzzle);
+            state.clueMask = selectedPuzzle.map(function (row) {
                 return row.map(function (value) {
                     return value !== 0;
                 });
@@ -391,6 +488,14 @@
 
         function validate() {
             if (state.solving || state.validating) {
+                return;
+            }
+            if (hasConflicts(state.conflictCells)) {
+                setStatus(
+                    "Some cells repeat a digit in the same row, column, or box " +
+                        "(highlighted in red). Fix them before validating.",
+                    "error"
+                );
                 return;
             }
             abortRequest("validate");
@@ -453,6 +558,14 @@
 
         function solve() {
             if (state.solving || state.validating) {
+                return;
+            }
+            if (hasConflicts(state.conflictCells)) {
+                setStatus(
+                    "Some cells repeat a digit in the same row, column, or box " +
+                        "(highlighted in red). Fix them before solving.",
+                    "error"
+                );
                 return;
             }
             abortRequest("solve");
@@ -757,9 +870,19 @@
                 .then(function (res) {
                     if (token !== activeExtractToken) return;
                     var d = res.data || {};
-                    if (res.response.ok && d.status === "ok" && Array.isArray(d.grid)) {
+                    if (res.response.ok && Array.isArray(d.grid)) {
                         applyExtractedGrid(d.grid);
-                        setUploadStatus(d.message || "Sudoku grid extracted successfully.", "success");
+                        if (d.status === "conflicts") {
+                            setUploadStatus(
+                                d.message || "The extracted grid has conflicting digits.",
+                                "warning"
+                            );
+                        } else {
+                            setUploadStatus(
+                                d.message || "Sudoku grid extracted successfully.",
+                                "success"
+                            );
+                        }
                         setUploadWarnings(Array.isArray(d.warnings) ? d.warnings : []);
                         return;
                     }

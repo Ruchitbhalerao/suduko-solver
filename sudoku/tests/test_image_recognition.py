@@ -32,6 +32,29 @@ def _img_to_png(img: np.ndarray) -> bytes:
     return enc.tobytes()
 
 
+def _render_board(digit: int, side: int = 450) -> bytes:
+    """Render a 9x9 board with ``digit`` in every cell (guaranteed conflicts)."""
+    img = np.full((side, side, 3), 255, np.uint8)
+    step = side // 9
+    for i in range(10):
+        cv2.line(img, (i * step, 0), (i * step, side - 1), (0, 0, 0), 2)
+        cv2.line(img, (0, i * step), (side - 1, i * step), (0, 0, 0), 2)
+    for row in range(9):
+        for col in range(9):
+            centre = (col * step + step // 2 - 8, row * step + step // 2 + 8)
+            cv2.putText(
+                img,
+                str(digit),
+                centre,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (0, 0, 0),
+                2,
+                cv2.LINE_AA,
+            )
+    return _img_to_png(img)
+
+
 class ImageRecognitionPipelineTests(SimpleTestCase):
     def test_extract_from_fixture_plain(self):
         res = extract_sudoku_from_image(_load_fixture("example_board_plain.png"))
@@ -92,3 +115,17 @@ class ImageRecognitionApiTests(SimpleTestCase):
         f.name = "bad.gif"
         resp = self.client.post(self.url, {"image": f}, format="multipart")
         self.assertIn(resp.status_code, (415, 422))
+
+    def test_conflicting_recognition_still_returns_a_grid(self):
+        # The extractor flags conflicting clues but must still return the grid
+        # so the frontend can populate the board and let the user correct them.
+        f = io.BytesIO(_render_board(1))
+        f.name = "conflict.png"
+        resp = self.client.post(self.url, {"image": f}, format="multipart")
+        self.assertEqual(resp.status_code, 200)
+        j = resp.json()
+        self.assertEqual(j["status"], "conflicts")
+        self.assertEqual(len(j["grid"]), 9)
+        self.assertTrue(all(len(row) == 9 for row in j["grid"]))
+        self.assertIn("conflict", j)
+        self.assertTrue(j["warnings"])
