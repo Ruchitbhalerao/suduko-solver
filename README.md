@@ -8,11 +8,14 @@ framework-independent Python package so it can be tested and reused on its own.
 
 > **Current status: Phase 7 complete — JSON API + interactive frontend.**
 > The AI package contains three solvers (backtracking, MRV, MRV + forward
-> checking) and a standalone, Django-free benchmark service. Phase 7, part 1
-> added JSON API endpoints for **validating** and **solving** puzzles; Phase 7,
-> part 2 added the **interactive Sudoku interface**, built with plain HTML, CSS
-> and vanilla JavaScript (no frontend framework or build step). Step-by-step
-> solving visualization is **not** implemented yet.
+> checking), a standalone, Django-free benchmark service, and a **random puzzle
+> generator** that guarantees a unique solution. Phase 7, part 1 added JSON API
+> endpoints for **validating** and **solving** puzzles; Phase 7, part 2 added the
+> **interactive Sudoku interface**, built with plain HTML, CSS and vanilla
+> JavaScript (no frontend framework or build step). A `POST /api/generate/`
+> endpoint and a **New puzzle** button let the interface fetch a fresh,
+> uniquely-solvable puzzle from the server. Step-by-step solving visualization is
+> **not** implemented yet.
 
 ---
 
@@ -26,6 +29,7 @@ framework-independent Python package so it can be tested and reused on its own.
 - [x] **Phase 6** — benchmarking and performance comparison.
 - [x] **Phase 7, part 1** — HTTP API endpoints for validation and solving.
 - [x] **Phase 7, part 2** — interactive frontend Sudoku interface.
+- [x] **Phase 7, part 3** — random puzzle generation with uniqueness checking.
 - [ ] **Pending** — step-by-step solving visualization.
 
 ---
@@ -59,6 +63,7 @@ Suduko-solver/
 │   │   ├── backtracking.py        # Basic recursive backtracking solver
 │   │   ├── constraints.py         # Legality checks, candidates, empty-cell search
 │   │   ├── forward_checking.py    # MRV + forward checking search
+│   │   ├── generator.py           # Random puzzle generation + uniqueness counting
 │   │   ├── metrics.py             # SolverResult / SearchMetrics structures
 │   │   ├── mrv.py                 # MRV heuristic search
 │   │   └── solvers.py             # Algorithm registry (single source of truth)
@@ -91,9 +96,10 @@ Suduko-solver/
 │   │   ├── test_mrv.py            # MRV-solver tests
 │   │   ├── test_api.py            # HTTP API tests (Phase 7, part 1)
 │   │   ├── test_frontend.py       # Frontend integration tests (Phase 7, part 2)
+│   │   ├── test_generation.py     # Generator + /api/generate/ tests
 │   │   └── test_benchmark.py      # Benchmark service / report tests
 │   ├── __init__.py
-│   ├── api_views.py               # JSON API views: /api/validate/ and /api/solve/
+│   ├── api_views.py               # JSON API: validate, solve, generate
 │   ├── apps.py
 │   ├── models.py                  # Empty (no database in this phase)
 │   ├── urls.py                    # App URL routing (page + API endpoints)
@@ -428,16 +434,18 @@ Output files:
 
 ## HTTP API (Phase 7, part 1)
 
-Phase 7, part 1 exposes two synchronous JSON endpoints. They are a **thin HTTP
+Phase 7, part 1 exposes synchronous JSON endpoints. They are a **thin HTTP
 layer** over the existing AI engine: the views parse JSON, pick a solver from the
 shared registry (`sudoku/ai/solvers.py`), and delegate all Sudoku logic to
-`sudoku.utils.validation` and the solvers. No solver logic is re-implemented in
-the views, and no database, background task, or external service is involved.
+`sudoku.utils.validation`, the solvers, and the generator. No solver or
+generator logic is re-implemented in the views, and no database, background task,
+or external service is involved.
 
 | Method | Endpoint | Purpose |
 |---|---|---|
 | `POST` | `/api/validate/` | Check that a grid's structure and initial clues are valid. |
 | `POST` | `/api/solve/` | Solve a grid with a chosen algorithm and return metrics. |
+| `POST` | `/api/generate/` | Generate a random puzzle that has a unique solution. |
 
 ### Grid format
 
@@ -522,6 +530,49 @@ Valid-but-unsolvable response (`200`):
 search only, exactly as reported by the normal `SolverResult`. It is machine
 dependent and must not be compared for equality in tests.
 
+### `POST /api/generate/`
+
+Generates a random puzzle that is **valid and has exactly one solution**. The
+optional fields are:
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `difficulty` | string | `"medium"` | One of `easy`, `medium`, `hard`. Selects the clue-count target. |
+| `include_solution` | boolean | `false` | When `true`, the unique solution is included in the response. |
+
+Request:
+
+```json
+{ "difficulty": "hard" }
+```
+
+Response (`200`):
+
+```json
+{ "status": "generated",
+  "difficulty": "hard",
+  "clues": 26,
+  "unique": true,
+  "puzzle": [[8,0,0,...], ...],
+  "message": "Generated a new hard puzzle with 26 clues and a unique solution." }
+```
+
+With `"include_solution": true` the body also contains `"solution"`, a complete
+valid grid whose only solution is the returned puzzle.
+
+How uniqueness is guaranteed (see `sudoku/ai/generator.py`):
+
+1. A complete solution is built with randomized backtracking.
+2. Clues are removed one at a time in random order. After each tentative
+   removal, the number of solutions is counted (capped at 2); the removal is kept
+   only while the count stays at exactly **1**, otherwise the clue is restored.
+3. The finished puzzle is re-checked before it is returned.
+
+Difficulty is an **approximate** clue-count target (`easy` keeps more clues than
+`hard`); the exact clue count is always reported as `"clues"`. The generator
+never removes clues below the theoretical minimum of 17. An unsupported
+`difficulty` returns **400** with `"status": "unsupported_difficulty"`.
+
 ### Invalid input vs a valid unsolvable puzzle
 
 These are deliberately **different** outcomes:
@@ -580,6 +631,11 @@ curl -s -X POST http://127.0.0.1:8000/api/validate/ \
 curl -s -X POST http://127.0.0.1:8000/api/solve/ \
   -H "Content-Type: application/json" \
   -d '{"grid": [[5,3,0,0,7,0,0,0,0],[6,0,0,1,9,5,0,0,0],[0,9,8,0,0,0,0,6,0],[8,0,0,0,6,0,0,0,3],[4,0,0,8,0,3,0,0,1],[7,0,0,0,2,0,0,0,6],[0,6,0,0,0,0,2,8,0],[0,0,0,4,1,9,0,0,5],[0,0,0,0,8,0,0,7,9]], "algorithm": "mrv"}'
+
+# 3. Generate a random hard puzzle with a unique solution
+curl -s -X POST http://127.0.0.1:8000/api/generate/ \
+  -H "Content-Type: application/json" \
+  -d '{"difficulty": "hard"}'
 ```
 
 Verified with the running development server: `POST /api/validate/` returned
@@ -587,7 +643,8 @@ Verified with the running development server: `POST /api/validate/` returned
 returned `422`, an unsolvable-but-valid grid returned `200`
 (`"status": "unsolvable"`), an unsupported algorithm returned `400`, malformed
 JSON returned `400`, a non-JSON content type returned `415`, and `GET` returned
-`405`.
+`405`. `POST /api/generate/` returned `200` with a valid, uniquely-solvable
+puzzle for each difficulty, and an unsupported difficulty returned `400`.
 
 ---
 
@@ -635,10 +692,20 @@ the JSON API, so no separate configuration is needed. Static assets
 
 | Button | What it does |
 |---|---|
-| **Load example** | Fills the grid with a deterministic, known valid, incomplete puzzle that the validation endpoint accepts. |
-| **Validate** | `POST`s the grid to `/api/validate/` and shows the returned status/message. |
+| **New puzzle** | `POST`s the selected difficulty to `/api/generate/` and fills the grid with the returned puzzle (valid, unique solution). While waiting, the button reads `Generating…` and the other controls are disabled. If the server cannot be reached, it falls back to a built-in example. |
+| **Validate** | Always `POST`s the current grid to `/api/validate/` and shows the API's returned status/message, including the precise `422` message for a grid with duplicate clues. |
 | **Solve** | `POST`s the grid and the selected algorithm to `/api/solve/` and renders the result. |
 | **Clear grid** | Empties the grid and resets the results. |
+
+> Duplicate clues are highlighted in red as a visual aid, but the frontend never
+> blocks the request: the server is the single authority on validity, so
+> **Validate** and **Solve** always send the grid and display the API's message.
+
+### Choosing a puzzle difficulty
+
+The **New puzzle difficulty** selector controls what `/api/generate/` produces:
+`easy` keeps the most clues, `hard` the fewest. Difficulty is an approximate
+clue-count target and the exact number of clues is reported in the status message.
 
 ### Choosing an algorithm
 
@@ -691,21 +758,27 @@ checks). The automated suite therefore covers the page, its markup, static asset
 and API contract; the interactive behaviour should be checked by hand:
 
 1. `runserver`, open <http://127.0.0.1:8000/> — page loads, no console errors.
-2. You see a 9×9 board inside nine 3×3 boxes, four buttons and an algorithm list.
-3. Press **Load example** — cells fill; given numbers look different from blanks.
+2. You see a 9×9 board inside nine 3×3 boxes, the four grid-control buttons plus
+   the puzzle-difficulty and solver-algorithm lists (and the image-import controls).
+3. Choose a difficulty and press **New puzzle** — the button briefly reads
+   `Generating…`, then cells fill and the status reports the clue count.
 4. Type `5` in an empty cell, then type `0` and a letter — only `1`–`9` survive.
 5. Use **arrow keys** to move around the board; focus ring is clearly visible.
-6. Click **Validate** — status shows the API's "valid" message.
-7. Choose **backtracking**, click **Solve** — grid fills, original clues keep
+6. Generate a puzzle and click **Validate** — status shows the API's "valid" message.
+7. Repeat a clue value in a row and click **Validate** — the request still reaches
+   the API and the status shows the API's duplicate-clue message (the offending
+   cells are highlighted red).
+8. Choose **backtracking**, click **Solve** — grid fills, original clues keep
    their style, new cells appear in a different colour, and metrics are shown.
-8. Repeat step 7 for **mrv** and **mrv_forward_checking**.
-9. Load the example, change the algorithm after solving — the stale-results note
-   appears and old metrics are flagged.
-10. Enter a valid-but-unsolvable puzzle and press **Solve** — the message says it
+9. Repeat step 8 for **mrv** and **mrv_forward_checking**.
+10. Solve a puzzle, change the algorithm after solving — the stale-results note
+    appears and old metrics are flagged.
+11. Enter a valid-but-unsolvable puzzle and press **Solve** — the message says it
     has no solution and the grid is not shown as solved.
-11. Stop the server and press **Solve** — the network-error message appears and
-    the buttons recover.
-12. Resize the window narrow — the layout stacks and the board stays usable.
+12. Stop the server and press **New puzzle** — a warning says the server could not
+    be reached and a built-in example is loaded; press **Solve** and the
+    network-error message appears and the buttons recover.
+13. Resize the window narrow — the layout stacks and the board stays usable.
 
 ### Still pending
 
@@ -780,9 +853,12 @@ The interface now supports importing Sudoku puzzles directly from images.
 ### How it works
 1. Select or paste an image — a preview appears and "Extract Sudoku" becomes enabled.
 2. Click **Extract Sudoku**. The app sends the image to `POST /api/extract-sudoku/`.
-3. The recognized 9×9 grid populates the board; original/imported clues are marked distinctively.
-4. Review and correct any cells if needed.
-5. Validate or Solve as usual. Editing the grid marks previous results as stale.
+3. The board is located, corrected for perspective and rotation, then split into
+   cells using the grid lines measured from the image (not an assumed fixed
+   layout), so a tilted or slightly skewed photo is straightened first.
+4. The recognized 9×9 grid populates the board; original/imported clues are marked distinctively.
+5. Review and correct any cells if needed.
+6. Validate or Solve as usual. Editing the grid marks previous results as stale.
 
 ### Dependencies
 Image recognition uses `opencv-python-headless`, `numpy`, and `Pillow`. These are already installed in `.venv/` and listed in `requirements.txt`.

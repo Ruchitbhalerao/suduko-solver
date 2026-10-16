@@ -80,7 +80,9 @@ def binarize(gray: np.ndarray) -> np.ndarray:
 
     A relatively large window with a small constant keeps thick digit strokes
     solid (a small window would hollow them out) while still tracking lighting
-    gradients across a photograph.
+    gradients across a photograph.  Afterwards isolated specks (grain, JPEG
+    artefacts) are dropped: they are never part of a line or a digit, but
+    they do raise the baseline of every profile the lattice fitter measures.
     """
     side = min(gray.shape[:2])
     block = 25 if side >= 200 else 11
@@ -91,7 +93,24 @@ def binarize(gray: np.ndarray) -> np.ndarray:
     )
     # Close hairline gaps in the grid lines so the outline forms one contour.
     kernel = np.ones((3, 3), np.uint8)
-    return cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=1)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=1)
+    return despeckle(binary, min_area=4)
+
+
+def despeckle(binary: np.ndarray, min_area: int = 4) -> np.ndarray:
+    """Remove isolated components smaller than ``min_area`` pixels."""
+    if binary is None or binary.size == 0:
+        return binary
+    num, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    if num <= 2:
+        return binary
+    drop_ids = np.zeros(num, dtype=bool)
+    drop_ids[1:] = stats[1:, cv2.CC_STAT_AREA] < min_area
+    if not drop_ids.any():
+        return binary
+    output = binary.copy()
+    output[drop_ids[labels]] = 0
+    return output
 
 
 def preprocess(image_bytes: bytes, max_side: int = DEFAULT_MAX_SIDE) -> LoadedImage:

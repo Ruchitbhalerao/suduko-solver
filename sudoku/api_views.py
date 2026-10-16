@@ -18,6 +18,9 @@ Design choices (documented in the README and asserted by ``test_api.py``)
   valid-but-unsolvable puzzle (which is a normal **200** answer).
 * An unsupported algorithm name is a request error and gets **400**.
 * ``algorithm`` is optional; when omitted, :data:`DEFAULT_ALGORITHM` is used.
+* ``POST /api/generate/`` produces a fresh puzzle that is valid and has exactly
+  one solution. ``difficulty`` is optional and defaults to ``medium``; an
+  unsupported difficulty is a **400** request error.
 * An unexpected internal failure is logged and reported as a generic
   **500 Internal Server Error**; raw tracebacks and exception details are never
   returned, and such a failure is never mislabelled as "unsolvable".
@@ -37,6 +40,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from sudoku.ai.backtracking import SolverError
+from sudoku.ai.generator import (
+    DEFAULT_DIFFICULTY,
+    DIFFICULTIES,
+    GenerationError,
+    generate_puzzle,
+)
 from sudoku.ai.metrics import SolverResult
 from sudoku.ai.solvers import ALGORITHM_RUNNERS, ALGORITHMS, DEFAULT_ALGORITHM
 from sudoku.utils.validation import SudokuValidationError, validate_grid
@@ -58,6 +67,7 @@ CODE_INVALID_REQUEST = "invalid_request"
 CODE_UNSUPPORTED_MEDIA_TYPE = "unsupported_media_type"
 CODE_INVALID_GRID = "invalid_grid"
 CODE_UNSUPPORTED_ALGORITHM = "unsupported_algorithm"
+CODE_UNSUPPORTED_DIFFICULTY = "unsupported_difficulty"
 CODE_INTERNAL_ERROR = "internal_error"
 
 
@@ -161,6 +171,37 @@ def _extract_algorithm(data: Dict[str, Any]) -> Tuple[Optional[str], Optional[Js
         )
 
     return algorithm, None
+
+
+def _extract_difficulty(data: Dict[str, Any]) -> Tuple[Optional[str], Optional[JsonResponse]]:
+    """Return a validated difficulty name, or a 400 error response.
+
+    Omitting ``difficulty`` selects :data:`DEFAULT_DIFFICULTY`. A non-string
+    value or an unknown name is a request error.
+    """
+    if "difficulty" not in data:
+        return DEFAULT_DIFFICULTY, None
+
+    difficulty = data["difficulty"]
+    if not isinstance(difficulty, str):
+        return None, _error_response(
+            status_code=HTTP_400_BAD_REQUEST,
+            code=CODE_INVALID_REQUEST,
+            message="Field 'difficulty' must be a string.",
+        )
+
+    if difficulty not in DIFFICULTIES:
+        supported = ", ".join(DIFFICULTIES)
+        return None, _error_response(
+            status_code=HTTP_400_BAD_REQUEST,
+            code=CODE_UNSUPPORTED_DIFFICULTY,
+            message=(
+                f"Unsupported difficulty {difficulty!r}. "
+                f"Supported difficulties are: {supported}."
+            ),
+        )
+
+    return difficulty, None
 
 
 def _metrics_payload(result: SolverResult) -> Dict[str, Any]:
@@ -308,6 +349,66 @@ def api_solve(request: HttpRequest) -> JsonResponse:
         },
         status=HTTP_200_OK,
     )
+
+
+@csrf_exempt
+@require_POST
+def api_generate(request: HttpRequest) -> JsonResponse:
+    """``POST /api/generate/`` -- generate a puzzle with a unique solution.
+
+    The optional JSON fields are ``difficulty`` (``easy``, ``medium`` or
+    ``hard``; default ``medium``) and ``include_solution`` (boolean, default
+    ``false``). The generated puzzle is always valid and always has exactly one
+    solution; that uniqueness is enforced and re-checked by the generator.
+    """
+    data, error = _parse_json_body(request)
+    if error is not None:
+        return error
+
+    difficulty, error = _extract_difficulty(data)  # type: ignore[arg-type]
+    if error is not None:
+        return error
+
+    include_solution = data.get("include_solution", False)  # type: ignore[union-attr]
+    if not isinstance(include_solution, bool):
+        return _error_response(
+            status_code=HTTP_400_BAD_REQUEST,
+            code=CODE_INVALID_REQUEST,
+            message="Field 'include_solution' must be a boolean.",
+        )
+
+    try:
+        generated = generate_puzzle(difficulty)
+    except (GenerationError, ValueError):
+        logger.exception("Puzzle generation failed for difficulty %r.", difficulty)
+        return _error_response(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            code=CODE_INTERNAL_ERROR,
+            message="The puzzle generator encountered an internal error.",
+            extra={"difficulty": difficulty},
+        )
+    except Exception:  # noqa: BLE001 - never leak tracebacks
+        logger.exception("Unexpected error while generating a %r puzzle.", difficulty)
+        return _error_response(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            code=CODE_INTERNAL_ERROR,
+            message="The puzzle generator encountered an internal error.",
+            extra={"difficulty": difficulty},
+        )
+
+    body: Dict[str, Any] = {
+        "status": "generated",
+        "difficulty": generated.difficulty,
+        "clues": generated.clues,
+        "unique": generated.unique,
+        "puzzle": generated.puzzle,
+        "message": (
+            f"Generated a new {generated.difficulty} puzzle with "
+            f"{generated.clues} clues and a unique solution."
+        ),    }
+    if include_solution:
+        body["solution"] = generated.solution
+    return JsonResponse(body, status=HTTP_200_OK)
 
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024

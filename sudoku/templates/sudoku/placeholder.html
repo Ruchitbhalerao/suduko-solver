@@ -33,6 +33,7 @@
                 aria-label="Sudoku grid, 9 rows by 9 columns"
                 data-validate-url="{% url 'sudoku:api_validate' %}"
                 data-solve-url="{% url 'sudoku:api_solve' %}"
+                data-generate-url="{% url 'sudoku:api_generate' %}"
                 data-extract-url="{% url 'sudoku:api_extract_sudoku' %}"
             ></div>
 
@@ -51,6 +52,15 @@
                     </select>
                 </div>
 
+                <div class="field">
+                    <label for="difficulty">New puzzle difficulty</label>
+                    <select id="difficulty" name="difficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+
                 <div class="buttons" role="group" aria-label="Sudoku actions">
                     <button id="solve-button" type="button" class="btn btn-primary">
                         Solve
@@ -58,8 +68,8 @@
                     <button id="validate-button" type="button" class="btn">
                         Validate
                     </button>
-                    <button id="load-example-button" type="button" class="btn">
-                        Load example
+                    <button id="new-puzzle-button" type="button" class="btn">
+                        New puzzle
                     </button>
                     <button id="clear-button" type="button" class="btn btn-ghost">
                         Clear grid

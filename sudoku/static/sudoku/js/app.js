@@ -3,19 +3,21 @@
  * Plain vanilla JavaScript (no framework, no build step). Responsibilities:
  *   - build the 9x9 editable grid,
  *   - track the grid, the original clues, and solver-filled cells,
- *   - call the existing JSON API (/api/validate/ and /api/solve/),
+ *   - call the existing JSON API (/api/validate/, /api/solve/ and
+ *     /api/generate/),
  *   - render status messages and solver metrics,
  *   - mark results stale when the puzzle or algorithm changes.
  *
- * The two endpoint URLs are read from data-* attributes rendered by Django
+ * The endpoint URLs are read from data-* attributes rendered by Django
  * ({% url %}), so nothing here hard-codes a host or port.
  */
 (function () {
     "use strict";
 
-    /* A selection of valid, incomplete puzzles. One is chosen at random when
-       clicking "Load example". Includes easy_classic, medium_classic, and
-       hard_inkala from the benchmark dataset. */
+    /* Offline fallback puzzles. The "New puzzle" button asks the server to
+       generate a random puzzle with a unique solution; if that request fails
+       (for example the server is unreachable) one of these built-in, known
+       valid puzzles is loaded instead so the interface stays usable. */
     var EXAMPLE_PUZZLES = [
         // easy_classic
         [
@@ -90,8 +92,10 @@
     }
 
     /* Mark every non-empty cell that repeats a value in its row, column, or
-       3x3 box. These are the clues that make a grid invalid (HTTP 422), so the
-       UI highlights them and refuses to send the grid until they are fixed. */
+       3x3 box. These are the clues that make a grid invalid (HTTP 422). The UI
+       highlights them as a visual aid, but the server stays the authority on
+       validity: Validate and Solve always send the grid and show the API's own
+       error message. */
     function conflictMask(grid) {
         var mask = zeros().map(function (row) {
             return row.map(function () {
@@ -128,17 +132,6 @@
         return mask;
     }
 
-    function hasConflicts(mask) {
-        for (var r = 0; r < 9; r += 1) {
-            for (var c = 0; c < 9; c += 1) {
-                if (mask[r][c]) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     function isAbort(error) {
         return Boolean(error) && error.name === "AbortError";
     }
@@ -162,11 +155,13 @@
 
         var validateUrl = gridEl.dataset.validateUrl;
         var solveUrl = gridEl.dataset.solveUrl;
+        var generateUrl = gridEl.dataset.generateUrl;
 
         var algorithmSelect = document.getElementById("algorithm");
+        var difficultySelect = document.getElementById("difficulty");
         var solveButton = document.getElementById("solve-button");
         var validateButton = document.getElementById("validate-button");
-        var loadExampleButton = document.getElementById("load-example-button");
+        var newPuzzleButton = document.getElementById("new-puzzle-button");
         var clearButton = document.getElementById("clear-button");
 
         var statusEl = document.getElementById("status");
@@ -189,12 +184,14 @@
             cells: [],
             solving: false,
             validating: false,
+            generating: false,
             solveToken: 0,
             validateToken: 0,
             activeSolveToken: 0,
             activeValidateToken: 0,
             solveController: null,
             validateController: null,
+            generateController: null,
             hasResult: false,
             resultStale: false
         };
@@ -315,9 +312,18 @@
         }
 
         function updateControls() {
-            var busy = state.solving || state.validating;
+            var busy = state.solving || state.validating || state.generating;
             solveButton.disabled = busy;
             validateButton.disabled = busy;
+            if (newPuzzleButton) {
+                newPuzzleButton.disabled = busy;
+                newPuzzleButton.textContent = state.generating
+                    ? "Generating\u2026"
+                    : "New puzzle";
+            }
+            if (difficultySelect) {
+                difficultySelect.disabled = state.generating;
+            }
             solveButton.textContent = state.solving ? "Solving\u2026" : "Solve";
             validateButton.textContent = state.validating ? "Validating\u2026" : "Validate";
         }
@@ -394,8 +400,10 @@
         function onGridEdited() {
             abortRequest("solve");
             abortRequest("validate");
+            abortRequest("generate");
             state.solving = false;
             state.validating = false;
+            state.generating = false;
             updateControls();
             markStale();
         }
@@ -408,6 +416,10 @@
             if (kind === "validate" && state.validateController) {
                 state.validateController.abort();
                 state.validateController = null;
+            }
+            if (kind === "generate" && state.generateController) {
+                state.generateController.abort();
+                state.generateController = null;
             }
         }
 
@@ -450,17 +462,10 @@
 
         /* ---------- actions ---------- */
 
-        function loadExample() {
-            abortRequest("solve");
-            abortRequest("validate");
-            state.solving = false;
-            state.validating = false;
-            updateControls();
-
-            var randomIndex = Math.floor(Math.random() * EXAMPLE_PUZZLES.length);
-            var selectedPuzzle = EXAMPLE_PUZZLES[randomIndex];
-            state.grid = cloneGrid(selectedPuzzle);
-            state.clueMask = selectedPuzzle.map(function (row) {
+        /* Insert a puzzle into the board and reset all per-puzzle state. */
+        function loadPuzzle(grid) {
+            state.grid = cloneGrid(grid);
+            state.clueMask = grid.map(function (row) {
                 return row.map(function (value) {
                     return value !== 0;
                 });
@@ -468,14 +473,89 @@
             state.solvedMask = falses();
             clearResult();
             renderAll();
-            setStatus("Loaded an example puzzle. Press Solve or Validate.", "info");
+        }
+
+        /* Offline fallback: a known-valid built-in example. Used only when the
+           generation request cannot reach the server. */
+        function loadBundledExample(reason) {
+            var randomIndex = Math.floor(Math.random() * EXAMPLE_PUZZLES.length);
+            loadPuzzle(EXAMPLE_PUZZLES[randomIndex]);
+            setStatus(
+                reason || "Loaded a built-in example puzzle.",
+                "warning"
+            );
+        }
+
+        function generatePuzzle() {
+            if (state.solving || state.validating || state.generating) {
+                return;
+            }
+            abortRequest("solve");
+            abortRequest("validate");
+            abortRequest("generate");
+            state.solving = false;
+            state.validating = false;
+
+            var difficulty = difficultySelect ? difficultySelect.value : "medium";
+            var controller = new AbortController();
+            state.generateController = controller;
+            state.generating = true;
+            updateControls();
+            setStatus("Generating a new " + difficulty + " puzzle\u2026", "info");
+
+            fetch(generateUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ difficulty: difficulty }),
+                signal: controller.signal
+            })
+                .then(function (response) {
+                    return readJson(response).then(function (data) {
+                        return { response: response, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (state.generateController !== controller) {
+                        return;
+                    }
+                    var data = result.data;
+                    if (result.response.ok && data && Array.isArray(data.puzzle)) {
+                        loadPuzzle(data.puzzle);
+                        setStatus(
+                            data.message || "Generated a new puzzle.",
+                            "success"
+                        );
+                        return;
+                    }
+                    loadBundledExample(
+                        "Could not generate a puzzle on the server; " +
+                            "loaded a built-in example instead."
+                    );
+                })
+                .catch(function (error) {
+                    if (!isAbort(error) && state.generateController === controller) {
+                        loadBundledExample(
+                            "Could not reach the server to generate a puzzle; " +
+                                "loaded a built-in example instead."
+                        );
+                    }
+                })
+                .then(function () {
+                    if (state.generateController === controller) {
+                        state.generateController = null;
+                        state.generating = false;
+                        updateControls();
+                    }
+                });
         }
 
         function clearGrid() {
             abortRequest("solve");
             abortRequest("validate");
+            abortRequest("generate");
             state.solving = false;
             state.validating = false;
+            state.generating = false;
             updateControls();
 
             state.grid = zeros();
@@ -483,19 +563,11 @@
             state.solvedMask = falses();
             clearResult();
             renderAll();
-            setStatus("Grid cleared. Enter a puzzle or load the example.", "info");
+            setStatus("Grid cleared. Enter a puzzle or generate a new one.", "info");
         }
 
         function validate() {
-            if (state.solving || state.validating) {
-                return;
-            }
-            if (hasConflicts(state.conflictCells)) {
-                setStatus(
-                    "Some cells repeat a digit in the same row, column, or box " +
-                        "(highlighted in red). Fix them before validating.",
-                    "error"
-                );
+            if (state.solving || state.validating || state.generating) {
                 return;
             }
             abortRequest("validate");
@@ -557,15 +629,7 @@
         }
 
         function solve() {
-            if (state.solving || state.validating) {
-                return;
-            }
-            if (hasConflicts(state.conflictCells)) {
-                setStatus(
-                    "Some cells repeat a digit in the same row, column, or box " +
-                        "(highlighted in red). Fix them before solving.",
-                    "error"
-                );
+            if (state.solving || state.validating || state.generating) {
                 return;
             }
             abortRequest("solve");
@@ -699,7 +763,9 @@
         }
         solveButton.addEventListener("click", solve);
         validateButton.addEventListener("click", validate);
-        loadExampleButton.addEventListener("click", loadExample);
+        if (newPuzzleButton) {
+            newPuzzleButton.addEventListener("click", generatePuzzle);
+        }
         clearButton.addEventListener("click", clearGrid);
 
 
@@ -845,8 +911,8 @@
         });
 
         function applyExtractedGrid(grid) {
-            abortRequest("solve"); abortRequest("validate");
-            state.solving=false; state.validating=false; updateControls();
+            abortRequest("solve"); abortRequest("validate"); abortRequest("generate");
+            state.solving=false; state.validating=false; state.generating=false; updateControls();
             state.grid = cloneGrid(grid);
             state.clueMask = grid.map(function (r){ return r.map(function(v){ return v!==0; }); });
             state.solvedMask = falses();

@@ -46,11 +46,21 @@ def _warn_if_weak(result: Dict[str, Any]) -> None:
     if recognised == 0:
         warnings.append("No digits were recognised in the detected grid.")
 
+    uncertain = result.get("uncertain_cells") or []
+    if uncertain:
+        warnings.append(
+            f"{len(uncertain)} cell(s) contain ink that could not be read "
+            "reliably and were left empty. Check them before solving."
+        )
+
+    # With k = 5 the agreement score is 0.6, 0.8 or 1.0.  Only cells where all
+    # five neighbours agree (1.0) are treated as fully confident; a kept digit
+    # at 0.8 is flagged for a quick human check.
     low_confidence = sum(
         1
         for row_index, row in enumerate(grid)
         for col_index, value in enumerate(row)
-        if value and result["cell_confidence"][row_index][col_index] < 0.6
+        if value and result["cell_confidence"][row_index][col_index] < 1.0
     )
     if low_confidence:
         warnings.append(
@@ -64,8 +74,13 @@ def extract_sudoku_from_image(image_bytes: bytes) -> Dict[str, Any]:
     """Run the full recognition pipeline.
 
     Returns a dictionary with ``status``, ``grid``, ``recognized_cells``,
-    ``empty_cells``, ``confidence``, ``cell_confidence``, ``warnings`` and
+    ``empty_cells``, ``confidence``, ``cell_confidence``,
+    ``uncertain_cells``, ``low_confidence_cells``, ``warnings`` and
     ``message``. Raises :class:`SudokuExtractionError` on any failure.
+
+    The recognised values are *never* silently altered: if the clues break a
+    Sudoku rule the result carries ``status: "conflicts"`` plus the exact
+    conflict message so the caller can show it and let the user decide.
     """
     if not image_bytes:
         raise SudokuExtractionError(
@@ -89,7 +104,7 @@ def extract_sudoku_from_image(image_bytes: bytes) -> Dict[str, Any]:
         )
 
     try:
-        grid, cell_confidence = recognize_digits(board)
+        grid, cell_confidence, uncertain_cells = recognize_digits(board)
     except (ValueError, SudokuExtractionError):
         raise
     except Exception as exc:  # pragma: no cover - defensive
@@ -116,6 +131,12 @@ def extract_sudoku_from_image(image_bytes: bytes) -> Dict[str, Any]:
         if grid[r][c]
     ]
     confidence = float(sum(scores) / len(scores)) if scores else 0.0
+    low_confidence_cells = [
+        [r, c]
+        for r in range(9)
+        for c in range(9)
+        if grid[r][c] and cell_confidence[r][c] < 1.0
+    ]
 
     conflict: str | None = None
     try:
@@ -132,6 +153,8 @@ def extract_sudoku_from_image(image_bytes: bytes) -> Dict[str, Any]:
         "cell_confidence": [
             [round(value, 3) for value in row] for row in cell_confidence
         ],
+        "uncertain_cells": sorted(uncertain_cells),
+        "low_confidence_cells": low_confidence_cells,
         "warnings": [],
         "message": (
             "Sudoku grid extracted successfully."

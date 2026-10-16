@@ -55,6 +55,50 @@ def _render_board(digit: int, side: int = 450) -> bytes:
     return _img_to_png(img)
 
 
+def _render_example_board(
+    angle: float = 0.0, side: int = 450, margin: int = 80
+) -> bytes:
+    """Render the EXAMPLE puzzle, optionally rotated, on a bordered canvas.
+
+    The margin matters: a real photograph never has the board flush with the
+    frame edge, and rotating a flush board clips its corners.  Rendering with
+    a margin is therefore a faithful stand-in for a hand-held photo.
+    """
+    canvas = np.full(
+        (side + 2 * margin, side + 2 * margin, 3), 245, np.uint8
+    )
+    board = np.full((side, side, 3), 255, np.uint8)
+    step = side // 9
+    for i in range(10):
+        thickness = 3 if i % 3 == 0 else 1
+        cv2.line(board, (i * step, 0), (i * step, side - 1), (0, 0, 0), thickness)
+        cv2.line(board, (0, i * step), (side - 1, i * step), (0, 0, 0), thickness)
+    for row in range(9):
+        for col in range(9):
+            value = EXAMPLE[row][col]
+            if value:
+                centre = (col * step + step // 2 - 8, row * step + step // 2 + 8)
+                cv2.putText(
+                    board,
+                    str(value),
+                    centre,
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 0, 0),
+                    2,
+                    cv2.LINE_AA,
+                )
+    canvas[margin : margin + side, margin : margin + side] = board
+    if angle:
+        height, width = canvas.shape[:2]
+        matrix = cv2.getRotationMatrix2D((width / 2, height / 2), angle, 1.0)
+        canvas = cv2.warpAffine(
+            canvas, matrix, (width, height), borderValue=(245, 245, 245)
+        )
+    return _img_to_png(canvas)
+
+
+
 class ImageRecognitionPipelineTests(SimpleTestCase):
     def test_extract_from_fixture_plain(self):
         res = extract_sudoku_from_image(_load_fixture("example_board_plain.png"))
@@ -76,6 +120,40 @@ class ImageRecognitionPipelineTests(SimpleTestCase):
     def test_corrupt_image(self):
         with self.assertRaises(SudokuExtractionError):
             extract_sudoku_from_image(b"not an image at all")
+
+
+class ImageRecognitionRotationTests(SimpleTestCase):
+    """A rotated board must never produce duplicated (conflicting) clues.
+
+    The original bug was a rotated board whose internal grid lines stayed
+    diagonal after the perspective warp; the fitted lattice then landed on a
+    sub-grid, cells were mis-segmented and digits were read into the wrong
+    rows/columns, surfacing as "duplicate clue" conflicts.
+    """
+
+    def _assert_clean(self, angle: float):
+        res = extract_sudoku_from_image(_render_example_board(angle))
+        self.assertEqual(res["status"], "ok", f"angle={angle}: {res.get('conflict')}")
+        self.assertEqual(res["grid"], EXAMPLE, f"angle={angle}")
+
+    def test_rotated_five_degrees(self):
+        self._assert_clean(5.0)
+
+    def test_rotated_ten_degrees(self):
+        self._assert_clean(10.0)
+
+    def test_rotated_fifteen_degrees(self):
+        self._assert_clean(15.0)
+
+    def test_rotated_negative_ten_degrees(self):
+        self._assert_clean(-10.0)
+
+    def test_rotated_no_conflicts(self):
+        # Broader sweep: whatever rotation, the result must be conflict-free.
+        for angle in (-15.0, -8.0, 3.0, 7.0, 12.0):
+            res = extract_sudoku_from_image(_render_example_board(angle))
+            self.assertEqual(res["status"], "ok", f"angle={angle}: {res.get('conflict')}")
+
 
 
 class ImageRecognitionApiTests(SimpleTestCase):

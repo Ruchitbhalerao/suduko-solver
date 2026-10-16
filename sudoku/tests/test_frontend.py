@@ -67,8 +67,9 @@ class HomePageTests(SimpleTestCase):
             "solve-button",
             "validate-button",
             "clear-button",
-            "load-example-button",
+            "new-puzzle-button",
             "algorithm",
+            "difficulty",
         ):
             with self.subTest(element=element_id):
                 self.assertContains(self.response, f'id="{element_id}"')
@@ -87,6 +88,7 @@ class HomePageTests(SimpleTestCase):
     def test_page_references_the_api_endpoints(self):
         self.assertContains(self.response, 'data-validate-url="/api/validate/"')
         self.assertContains(self.response, 'data-solve-url="/api/solve/"')
+        self.assertContains(self.response, 'data-generate-url="/api/generate/"')
 
     def test_page_references_static_assets(self):
         self.assertContains(self.response, "sudoku/css/styles.css")
@@ -121,7 +123,25 @@ class StaticAssetTests(SimpleTestCase):
         js = _read_static("sudoku/js/app.js")
         self.assertIn("dataset.validateUrl", js)
         self.assertIn("dataset.solveUrl", js)
+        self.assertIn("dataset.generateUrl", js)
         self.assertIn("fetch(", js)
+
+    def test_js_generates_puzzles_with_a_loading_state(self):
+        js = _read_static("sudoku/js/app.js")
+        # The New puzzle button asks the server to generate and shows progress.
+        self.assertIn("generatePuzzle", js)
+        self.assertIn("Generating", js)
+        self.assertIn("state.generating", js)
+
+    def test_validate_button_always_delegates_to_the_api(self):
+        # Regression guard for the Validate button root cause: validation used
+        # to be short-circuited by a client-side conflict check, so a grid with
+        # duplicate clues never reached the API and no server message was shown.
+        # Validate must always POST the grid and display the API's own message.
+        js = _read_static("sudoku/js/app.js")
+        self.assertNotIn("Fix them before validating", js)
+        self.assertNotIn("hasConflicts", js)
+        self.assertIn("fetch(validateUrl", js)
 
     def test_js_handles_all_algorithm_identifiers(self):
         js = _read_static("sudoku/js/app.js")
