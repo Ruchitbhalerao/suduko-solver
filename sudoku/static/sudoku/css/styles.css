@@ -1,0 +1,664 @@
+/* AI-Based Sudoku Solver — frontend styles.
+   Plain, minimal: flat surfaces, a black grid, system fonts, and a single
+   muted accent. No gradients, glow, or animation. All class names toggled by
+   app.js are preserved. */
+
+:root {
+    --bg: #f4f4f5;
+    --panel: #ffffff;
+    --panel-soft: #fafafa;
+    --ink: #1a1a1a;
+    --muted: #595959;
+    --faint: #8a8a8a;
+    --line: #d9d9d9;
+    --line-mid: #c4c4c4;
+    --grid: #1a1a1a;          /* the heavy 3x3 rules */
+    --grid-thin: #bdbdbd;     /* cell separators */
+
+    --accent: #3a6ea5;        /* the one muted accent */
+    --accent-ink: #2c577f;
+    --accent-soft: #eef2f6;
+
+    --clue-ink: #1a1a1a;
+    --entered-ink: #2c577f;
+    --solved-ink: #2f6a46;
+    --solved-bg: #eef4ef;
+    --clue-bg: #f1f1f1;
+
+    --focus: #3a6ea5;
+
+    --ok-bg: #eef4ef;
+    --ok-line: #bcd6c3;
+    --ok-ink: #2f6a46;
+    --warn-bg: #f7eeee;
+    --warn-line: #e0c2c2;
+    --warn-ink: #9a3838;
+    --info-bg: #eef2f6;
+    --info-line: #cdd9e4;
+    --info-ink: #2c577f;
+
+    --radius: 8px;
+    --radius-sm: 6px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+/* The JS toggles visibility with the `hidden` attribute (el.hidden = true),
+   so it must win over the layout display rules (grid/flex) below. */
+[hidden] {
+    display: none !important;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 2rem clamp(0.85rem, 3vw, 2rem) 3rem;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+}
+
+.skip-link {
+    position: absolute;
+    left: -999px;
+    top: 0;
+    background: var(--ink);
+    color: #fff;
+    padding: 0.6rem 0.9rem;
+    border-radius: 0 0 0.4rem 0;
+    z-index: 10;
+}
+
+.skip-link:focus {
+    left: 0;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---------- Header / footer ---------- */
+
+.page-header {
+    max-width: 1060px;
+    margin: 0 auto 1.5rem;
+}
+
+.page-header h1 {
+    margin: 0 0 0.3rem;
+    font-size: clamp(1.4rem, 2.6vw, 1.8rem);
+    font-weight: 600;
+}
+
+.subtitle {
+    margin: 0;
+    max-width: 44rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.page-footer {
+    max-width: 1060px;
+    margin: 2rem auto 0;
+    color: var(--faint);
+    font-size: 0.8rem;
+}
+
+/* ---------- Layout ---------- */
+
+.layout {
+    max-width: 1060px;
+    margin: 0 auto;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    grid-template-areas:
+        "board results"
+        "board upload"
+        "info  info";
+    align-items: start;
+}
+
+.board-panel { grid-area: board; }
+.results-panel { grid-area: results; }
+.upload-panel { grid-area: upload; }
+.info-panel { grid-area: info; }
+
+@media (max-width: 900px) {
+    .layout {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "board"
+            "results"
+            "upload"
+            "info";
+    }
+}
+
+/* ---------- Panels ---------- */
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: clamp(1rem, 2vw, 1.4rem);
+}
+
+.panel h2 {
+    margin: 0 0 0.9rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* ---------- Board ---------- */
+
+.board-stage {
+    max-width: 32rem;
+    margin: 0 auto;
+}
+
+.sudoku-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border: 2px solid var(--grid);
+    background: var(--panel);
+}
+
+/* Row wrappers exist for ARIA (role="row"); display:contents lets the cells
+   participate directly in the 9x9 grid layout. */
+.grid-row {
+    display: contents;
+}
+
+.cell {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-right: 1px solid var(--grid-thin);
+    border-bottom: 1px solid var(--grid-thin);
+    background: var(--panel);
+    color: var(--ink);
+    text-align: center;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-size: clamp(1rem, 3.8vw, 1.45rem);
+    font-weight: 500;
+    line-height: 1;
+    border-radius: 0;
+    appearance: none;
+}
+
+/* Heavy rules between the 3x3 boxes. */
+.cell.box-right {
+    border-right: 2px solid var(--grid);
+}
+
+.cell.box-bottom {
+    border-bottom: 2px solid var(--grid);
+}
+
+.cell:last-child {
+    border-right: none;
+}
+
+.cell:focus,
+.cell:focus-visible {
+    outline: none;
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 2px var(--accent);
+    position: relative;
+    z-index: 2;
+}
+
+/* Cell states: original clue vs user-entered vs solver-filled. */
+.cell.clue {
+    background: var(--clue-bg);
+    color: var(--clue-ink);
+    font-weight: 700;
+}
+
+.cell.entered {
+    color: var(--entered-ink);
+    font-weight: 600;
+}
+
+.cell.solved {
+    background: var(--solved-bg);
+    color: var(--solved-ink);
+    font-weight: 600;
+}
+
+/* Cells whose clue breaks a Sudoku rule (e.g. a digit recognised twice). */
+.cell.conflict {
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+    box-shadow: inset 0 0 0 2px var(--warn-line);
+    font-weight: 700;
+}
+
+.cell[readonly] {
+    cursor: default;
+}
+
+.grid-hint {
+    max-width: 32rem;
+    margin: 0.85rem auto 0;
+    color: var(--muted);
+    font-size: 0.82rem;
+    text-align: center;
+}
+
+/* ---------- Controls ---------- */
+
+.controls {
+    margin-top: 1.25rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.fields {
+    display: grid;
+    gap: 0.9rem;
+    grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 460px) {
+    .fields {
+        grid-template-columns: 1fr;
+    }
+}
+
+.field {
+    display: grid;
+    gap: 0.3rem;
+}
+
+.field label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+select {
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    font: inherit;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--line-mid);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+select:focus-visible,
+.btn:focus-visible,
+.upload-dropzone:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.btn {
+    flex: 1 1 7.5rem;
+    padding: 0.55rem 0.9rem;
+    font: inherit;
+    font-weight: 500;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--line-mid);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+    background: var(--panel-soft);
+    border-color: var(--faint);
+}
+
+.btn:active:not(:disabled) {
+    background: #f0f0f0;
+}
+
+.btn-primary {
+    color: #fff;
+    background: var(--ink);
+    border-color: var(--ink);
+    font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #000;
+    border-color: #000;
+}
+
+.btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+    background: var(--panel-soft);
+    border-color: var(--line);
+    color: var(--ink);
+}
+
+.btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ---------- Status messages ---------- */
+
+.status {
+    margin-top: 1.1rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--info-line);
+    border-left: 3px solid var(--info-ink);
+    background: var(--info-bg);
+    color: var(--info-ink);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.status.is-success {
+    background: var(--ok-bg);
+    border-color: var(--ok-line);
+    border-left-color: var(--ok-ink);
+    color: var(--ok-ink);
+}
+
+.status.is-error,
+.status.is-warning {
+    background: var(--warn-bg);
+    border-color: var(--warn-line);
+    border-left-color: var(--warn-ink);
+    color: var(--warn-ink);
+}
+
+.status.is-info {
+    background: var(--info-bg);
+    border-color: var(--info-line);
+    border-left-color: var(--info-ink);
+    color: var(--info-ink);
+}
+
+/* ---------- Results ---------- */
+
+.results-empty {
+    margin: 0;
+    padding: 0.9rem;
+    border: 1px dashed var(--line-mid);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.results {
+    margin: 0;
+    display: grid;
+    gap: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.result-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.result-row:last-child {
+    border-bottom: none;
+}
+
+.result-row dt {
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.result-row dd {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    text-align: right;
+}
+
+.stale-note {
+    margin: 0.85rem 0 0;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-line);
+    color: var(--warn-ink);
+    font-size: 0.84rem;
+}
+
+/* ---------- Info panel ---------- */
+
+.algorithms {
+    margin: 0;
+    display: grid;
+    gap: 0.9rem;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.algorithms dt {
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 0.25rem;
+}
+
+.algorithms dd {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.info-note {
+    margin: 1rem 0 0;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.84rem;
+}
+
+.noscript {
+    max-width: 32rem;
+    margin: 1.5rem auto 0;
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius-sm);
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-line);
+    color: var(--warn-ink);
+}
+
+/* ---------- Image upload ---------- */
+
+.upload-hint {
+    color: var(--muted);
+    margin: 0 0 0.9rem;
+    font-size: 0.88rem;
+}
+
+kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8em;
+    padding: 0.05rem 0.35rem;
+    border: 1px solid var(--line-mid);
+    border-radius: 0.3rem;
+    background: var(--panel-soft);
+    color: var(--ink);
+}
+
+.upload-dropzone {
+    border: 1px dashed var(--line-mid);
+    border-radius: var(--radius-sm);
+    padding: clamp(1rem, 3vw, 1.5rem);
+    background: var(--panel-soft);
+    cursor: pointer;
+    outline: none;
+}
+
+.upload-dropzone:hover {
+    border-color: var(--faint);
+}
+
+.upload-dropzone.is-dragover {
+    border-color: var(--accent);
+    border-style: solid;
+    background: var(--accent-soft);
+}
+
+.upload-content {
+    text-align: center;
+    display: grid;
+    gap: 0.85rem;
+    justify-items: center;
+}
+
+#upload-instructions {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+    max-width: 24rem;
+}
+
+.upload-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.upload-buttons .btn {
+    flex: 0 1 auto;
+}
+
+.image-preview {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-height: 320px;
+    overflow: hidden;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+}
+
+.upload-status {
+    margin-top: 0.9rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.upload-status.is-success { color: var(--ok-ink); }
+.upload-status.is-error { color: var(--warn-ink); }
+.upload-status.is-info { color: var(--info-ink); }
+.upload-status.is-warning { color: var(--warn-ink); }
+
+.upload-warnings {
+    margin-top: 0.7rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-line);
+    color: var(--warn-ink);
+    border-radius: var(--radius-sm);
+    font-size: 0.86rem;
+}
+
+/* ---------- Dark mode ---------- */
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #161616;
+        --panel: #1e1e1e;
+        --panel-soft: #242424;
+        --ink: #e6e6e6;
+        --muted: #a3a3a3;
+        --faint: #707070;
+        --line: #333333;
+        --line-mid: #454545;
+        --grid: #c8c8c8;
+        --grid-thin: #4a4a4a;
+
+        --accent: #6f9fd0;
+        --accent-ink: #9cc0e6;
+        --accent-soft: #23303d;
+
+        --clue-ink: #ffffff;
+        --entered-ink: #9cc0e6;
+        --solved-ink: #86c9a0;
+        --solved-bg: #1a2b21;
+        --clue-bg: #2a2a2a;
+
+        --focus: #6f9fd0;
+
+        --ok-bg: #1a2b21;
+        --ok-line: #2f5540;
+        --ok-ink: #86c9a0;
+        --warn-bg: #2d1c1c;
+        --warn-line: #543434;
+        --warn-ink: #e6a3a3;
+        --info-bg: #1e2a36;
+        --info-line: #35506a;
+        --info-ink: #9cc0e6;
+    }
+
+    .cell {
+        background: #1b1b1b;
+    }
+
+    .cell:focus,
+    .cell:focus-visible {
+        background: var(--accent-soft);
+    }
+
+    .btn-primary {
+        color: #111;
+        background: #e6e6e6;
+        border-color: #e6e6e6;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: #fff;
+        border-color: #fff;
+    }
+}

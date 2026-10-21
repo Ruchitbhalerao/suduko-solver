@@ -1,0 +1,8 @@
+# Core runtime dependency for the AI-Based Sudoku Solver (Phase 1).
+# Only Django is required. The AI engine uses the Python standard library.
+Django==5.2.18
+
+# Image processing dependencies for Sudoku image recognition
+opencv-python-headless>=5.0.0
+numpy>=2.0
+Pillow>=10.0
