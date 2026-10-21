@@ -30,7 +30,10 @@ inventing a clue.
 
 from __future__ import annotations
 
+<<<<<<< HEAD
 import os
+=======
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
 import threading
 from dataclasses import dataclass, field
 
@@ -40,6 +43,7 @@ import numpy as np
 CANVAS = 28
 CROP = 20  # digit fitted into a 20x20 box centred on a 28x28 canvas
 FEATURES = CANVAS * CANVAS
+<<<<<<< HEAD
 # Classification uses a *distance-weighted* vote among the nearest templates:
 # each of the K nearest votes for its digit with weight 1/distance, so a clearly
 # closest template carries the decision even when the raw neighbour counts are
@@ -49,6 +53,10 @@ FEATURES = CANVAS * CANVAS
 K = 9
 WEIGHTED_ACCEPT = 0.55  # the winning digit must hold this share of the vote
 MIN_SCORE = 0.8  # kept for reference; superseded by WEIGHTED_ACCEPT
+=======
+K = 5
+MIN_SCORE = 0.8  # below this a cell is reported as unknown
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
 # A kept digit may be at most this many times farther from the training
 # manifold than the typical digit on the same board (with an absolute floor so
 # a board of near-perfect matches does not over-tighten the rule).
@@ -212,6 +220,7 @@ def _training_set() -> tuple[np.ndarray, np.ndarray]:
     return np.vstack(samples), np.asarray(labels, dtype=np.int32)
 
 
+<<<<<<< HEAD
 _TEMPLATE_BANK = os.path.join(os.path.dirname(__file__), "digit_templates.npz")
 
 
@@ -237,11 +246,14 @@ def _load_template_bank() -> tuple[np.ndarray, np.ndarray] | None:
     return np.ascontiguousarray(samples, dtype=np.float32), labels
 
 
+=======
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
 def _ensure_model() -> None:
     global _samples, _labels
     if _samples is None:
         with _lock:
             if _samples is None:
+<<<<<<< HEAD
                 bank = _load_template_bank()
                 if bank is not None:
                     _samples, _labels = bank
@@ -249,6 +261,11 @@ def _ensure_model() -> None:
                     samples, labels = _training_set()
                     _samples = np.ascontiguousarray(samples, dtype=np.float32)
                     _labels = labels
+=======
+                samples, labels = _training_set()
+                _samples = np.ascontiguousarray(samples, dtype=np.float32)
+                _labels = labels
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
 
 
 # ---------------------------------------------------------------------------
@@ -317,30 +334,46 @@ def is_probably_empty(cell: np.ndarray) -> bool:
     total = int(binary.size)
     if total == 0:
         return True
+<<<<<<< HEAD
     if int(binary.sum()) < max(8.0, total * 0.008):
+=======
+    if int(binary.sum()) < max(10.0, total * 0.012):
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
         return True
     num, _, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
     if num <= 1:
         return True
     areas = stats[1:, cv2.CC_STAT_AREA]
     biggest = int(areas.max())
+<<<<<<< HEAD
     # Emptiness is decided on the *shape* of the largest blob, not on how much
     # ink it holds: a printed board photographed at modest resolution draws its
     # digits with thin strokes, so a real 1 or 7 covers barely 2% of its cell.
     # An area-fraction gate tuned for bold glyphs silently drops those, which is
     # how most clues went missing.  A low absolute floor only rejects specks.
     if biggest < max(12.0, total * 0.010):
+=======
+    if biggest < max(15.0, total * 0.035):
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
         return True
     index = 1 + int(np.argmax(areas))
     height, width = binary.shape[:2]
     box_h = int(stats[index][cv2.CC_STAT_HEIGHT])
     box_w = int(stats[index][cv2.CC_STAT_WIDTH])
+<<<<<<< HEAD
     # A digit spans a good part of its cell's height; specks and smudges do not,
     # no matter how many of them there are.  Width is allowed to be small so
     # thin glyphs (1) are not mistaken for emptiness.
     if box_h < 0.22 * height:
         return True
     if box_w < 0.07 * width:
+=======
+    # A digit occupies a substantial part of its cell; specks and smudges do
+    # not, no matter how many of them there are.
+    if box_h < 0.26 * height:
+        return True
+    if box_w < 0.10 * width:
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
         return True
     return False
 
@@ -385,6 +418,7 @@ def read_cell(cell: np.ndarray) -> CellReading:
     reading.distance = nearest
 
     total = _samples.shape[0]
+<<<<<<< HEAD
     k = min(K, total)
     idx = np.argpartition(distances, k - 1)[:k]
     near_labels = _labels[idx]
@@ -403,6 +437,17 @@ def read_cell(cell: np.ndarray) -> CellReading:
     total_weight = float(class_weight.sum())
     confidence = float(class_weight[winner] / total_weight) if total_weight else 0.0
     if confidence < WEIGHTED_ACCEPT:
+=======
+    take = min(K * 3, total)
+    idx = np.argpartition(distances, take - 1)[:take]
+    neighbours = _labels[idx[np.argsort(distances[idx])[:K]]]
+    winner = int(np.bincount(neighbours).argmax())
+    if winner < 1 or winner > 9:
+        reading.reasons.append("no confident winner")
+        return reading
+    confidence = float(np.count_nonzero(neighbours == winner)) / float(K)
+    if confidence < MIN_SCORE:
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
         reading.reasons.append("neighbours disagree")
         return reading
 

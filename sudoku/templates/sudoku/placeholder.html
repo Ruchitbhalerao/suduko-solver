@@ -1,9 +1,16 @@
+<<<<<<< HEAD
 {% load static %}
 {% comment %}
     The home page. Historically named "placeholder.html" (Phase 1); since
     Phase 7 part 2 it hosts the interactive Sudoku interface. The filename and
     the view name are kept so the existing Phase 1 route/tests continue to pass.
 {% endcomment %}
+=======
+{# The home page. Historically named "placeholder.html" (Phase 1); since Phase 7
+   part 2 it hosts the interactive Sudoku interface. The filename and the view
+   name are kept so the existing Phase 1 route/tests continue to pass. #}
+{% load static %}
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,8 +26,12 @@
     <header class="page-header">
         <h1>AI-Based Sudoku Solver</h1>
         <p class="subtitle">
+<<<<<<< HEAD
             Enter a puzzle or import one from an image, then solve it with
             backtracking, MRV, or forward checking.
+=======
+            Using Constraint Satisfaction Problems and Heuristic Search
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
         </p>
     </header>
 
@@ -29,6 +40,7 @@
             <h2 id="board-heading" class="sr-only">Sudoku board</h2>
 
             {# The 81 cells are created by app.js into this container. #}
+<<<<<<< HEAD
             <div class="board-stage">
                 <div
                     id="sudoku-grid"
@@ -41,6 +53,18 @@
                     data-extract-url="{% url 'sudoku:api_extract_sudoku' %}"
                 ></div>
             </div>
+=======
+            <div
+                id="sudoku-grid"
+                class="sudoku-grid"
+                role="grid"
+                aria-label="Sudoku grid, 9 rows by 9 columns"
+                data-validate-url="{% url 'sudoku:api_validate' %}"
+                data-solve-url="{% url 'sudoku:api_solve' %}"
+                data-generate-url="{% url 'sudoku:api_generate' %}"
+                data-extract-url="{% url 'sudoku:api_extract_sudoku' %}"
+            ></div>
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
 
             <p class="grid-hint">
                 Type digits 1&ndash;9 into the cells and leave unknown cells
@@ -48,6 +72,7 @@
             </p>
 
             <div class="controls">
+<<<<<<< HEAD
                 <div class="fields">
                     <div class="field">
                         <label for="algorithm">Solver algorithm</label>
@@ -66,6 +91,24 @@
                             <option value="hard">Hard</option>
                         </select>
                     </div>
+=======
+                <div class="field">
+                    <label for="algorithm">Solver algorithm</label>
+                    <select id="algorithm" name="algorithm">
+                        <option value="backtracking">Backtracking (baseline)</option>
+                        <option value="mrv">MRV (Minimum Remaining Values)</option>
+                        <option value="mrv_forward_checking">MRV + Forward Checking</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="difficulty">New puzzle difficulty</label>
+                    <select id="difficulty" name="difficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
                 </div>
 
                 <div class="buttons" role="group" aria-label="Sudoku actions">
@@ -84,6 +127,57 @@
                 </div>
             </div>
 
+<<<<<<< HEAD
+=======
+            <section class="panel upload-panel" aria-labelledby="upload-heading">
+                <h3 id="upload-heading">Import Sudoku from an image</h3>
+                <p class="upload-hint">
+                    Upload a PNG, JPG, JPEG, or WEBP image of a printed Sudoku board.
+                    You can also drag and drop it or paste a screenshot with
+                    <kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd>.
+                </p>
+
+                <div
+                    id="upload-dropzone"
+                    class="upload-dropzone"
+                    role="button"
+                    tabindex="0"
+                    aria-describedby="upload-instructions"
+                >
+                    <input
+                        id="image-input"
+                        type="file"
+                        accept="image/png, image/jpeg, image/jpg, image/webp"
+                        hidden
+                    />
+                    <div class="upload-content">
+                        <p id="upload-instructions">
+                            Drop an image here, click to choose a file, or paste from your
+                            clipboard.
+                        </p>
+                        <div class="upload-buttons">
+                            <button id="choose-image-button" type="button" class="btn">
+                                Choose image
+                            </button>
+                            <button id="extract-button" type="button" class="btn btn-primary" disabled>
+                                Extract Sudoku
+                            </button>
+                            <button id="reset-image-button" type="button" class="btn btn-ghost" disabled>
+                                Remove image
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="image-preview-container" class="image-preview" hidden>
+                    <img id="image-preview" alt="Selected Sudoku image preview" />
+                </div>
+
+                <p id="upload-status" class="upload-status" aria-live="polite" hidden></p>
+                <p id="upload-warnings" class="upload-warnings" hidden></p>
+            </section>
+
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
             <div
                 id="status"
                 class="status"
@@ -102,6 +196,7 @@
             </p>
 
             <dl id="results" class="results" hidden>
+<<<<<<< HEAD
                 <div class="result-row">
                     <dt>Status</dt>
                     <dd id="result-status">&mdash;</dd>
@@ -126,6 +221,20 @@
                     <dt>Execution time</dt>
                     <dd id="result-execution-time">&mdash;</dd>
                 </div>
+=======
+                <dt>Status</dt>
+                <dd id="result-status">&mdash;</dd>
+                <dt>Algorithm</dt>
+                <dd id="result-algorithm">&mdash;</dd>
+                <dt>Recursive calls</dt>
+                <dd id="result-recursive-calls">&mdash;</dd>
+                <dt>Attempted assignments</dt>
+                <dd id="result-attempted-assignments">&mdash;</dd>
+                <dt>Backtracks</dt>
+                <dd id="result-backtracks">&mdash;</dd>
+                <dt>Execution time</dt>
+                <dd id="result-execution-time">&mdash;</dd>
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
             </dl>
 
             <p id="stale-note" class="stale-note" hidden>
@@ -134,6 +243,7 @@
             </p>
         </aside>
 
+<<<<<<< HEAD
         <section class="panel upload-panel" aria-labelledby="upload-heading">
             <h2 id="upload-heading">Import from an image</h2>
             <p class="upload-hint">
@@ -182,6 +292,8 @@
             <p id="upload-warnings" class="upload-warnings" hidden></p>
         </section>
 
+=======
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
         <section class="panel info-panel" aria-labelledby="about-heading">
             <h2 id="about-heading">How the algorithms work</h2>
             <dl class="algorithms">

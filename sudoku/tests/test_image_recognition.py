@@ -149,6 +149,7 @@ class ImageRecognitionRotationTests(SimpleTestCase):
         self._assert_clean(-10.0)
 
     def test_rotated_no_conflicts(self):
+<<<<<<< HEAD
         # Broader sweep guarding *segmentation* under rotation: the deskewed
         # grid must land on the right cells, so the recovered board should
         # still match EXAMPLE.  Classification may occasionally tie two
@@ -167,6 +168,12 @@ class ImageRecognitionRotationTests(SimpleTestCase):
             self.assertLessEqual(
                 mismatches, 2, f"angle={angle}: {mismatches} cells differ from EXAMPLE"
             )
+=======
+        # Broader sweep: whatever rotation, the result must be conflict-free.
+        for angle in (-15.0, -8.0, 3.0, 7.0, 12.0):
+            res = extract_sudoku_from_image(_render_example_board(angle))
+            self.assertEqual(res["status"], "ok", f"angle={angle}: {res.get('conflict')}")
+>>>>>>> 8489722e6d638ec6bfd2c5806e03208df452060e
 
 
 
